@@ -70,7 +70,7 @@ export async function checkTableHeroBadge(
     });
 
     // Filter expenses by this creditor within last 7 days
-    const creditorExpenses = expenses.filter(exp => {
+    const creditorExpenses = expenses.filter((exp: any) => {
       const expTime = new Date(exp.createdAt).getTime();
       const daysAgo = (now - expTime) / (1000 * 60 * 60 * 24);
       return exp.payerId === creditorId && daysAgo <= 7;
@@ -157,7 +157,7 @@ export async function getUserBadges(userId: string, groupId?: string): Promise<a
       orderBy: { awardedAt: 'desc' }
     });
 
-    return badges.map(badge => ({
+    return badges.map((badge: any) => ({
       id: badge.id,
       badgeType: badge.badgeType,
       groupName: badge.group.name,

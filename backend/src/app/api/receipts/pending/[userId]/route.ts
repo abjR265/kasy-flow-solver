@@ -4,10 +4,10 @@ import prisma from '@/lib/prisma';
 // POST /api/receipts/pending/[userId] - Store pending receipt
 export async function POST(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const userId = params.userId;
+    const { userId } = await params;
     const body = await request.json();
     const {
       userName,
@@ -80,10 +80,10 @@ export async function POST(
 // GET /api/receipts/pending/[userId] - Get pending receipt
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const userId = params.userId;
+    const { userId } = await params;
     const { searchParams } = new URL(request.url);
     const groupId = searchParams.get('groupId') || 'default';
 

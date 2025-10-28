@@ -106,7 +106,7 @@ export async function calculateBalances(groupId: string): Promise<Balance[]> {
       select: { id: true, displayName: true }
     });
 
-    const userMap = new Map(users.map(u => [u.id, u.displayName]));
+    const userMap = new Map(users.map((u: any) => [u.id, u.displayName]));
     Object.values(balances).forEach(balance => {
       balance.userName = userMap.get(balance.userId) || balance.userName;
     });

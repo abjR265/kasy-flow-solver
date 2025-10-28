@@ -4,10 +4,10 @@ import { calculateBalances, calculateSettlements } from '@/lib/calculations';
 // GET /api/settlements/[groupId] - Get settlements for group
 export async function GET(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   try {
-    const groupId = params.groupId;
+    const { groupId } = await params;
 
     console.log('💰 Calculating settlements for group:', groupId);
 

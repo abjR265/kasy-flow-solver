@@ -60,10 +60,10 @@ export async function PUT(
 // DELETE /api/expenses/[id] - Soft delete expense
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const expenseId = params.id;
+    const { id: expenseId } = await params;
 
     console.log('🗑️ Soft deleting expense:', expenseId);
 

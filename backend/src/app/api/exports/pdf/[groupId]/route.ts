@@ -5,10 +5,10 @@ import { calculateBalances, calculateSettlements } from '@/lib/calculations';
 // GET /api/exports/pdf/[groupId] - Generate PDF export
 export async function GET(
   request: NextRequest,
-  { params }: { params: { groupId: string } }
+  { params }: { params: Promise<{ groupId: string }> }
 ) {
   try {
-    const groupId = params.groupId;
+    const { groupId } = await params;
 
     console.log('📄 Generating PDF export for group:', groupId);
 
@@ -56,7 +56,7 @@ export async function GET(
         description: group.description,
         memberCount: group.members.length
       },
-      expenses: expenses.map(expense => ({
+      expenses: expenses.map((expense: any) => ({
         id: expense.id,
         description: expense.description,
         merchant: expense.merchant,
@@ -79,9 +79,9 @@ export async function GET(
       })),
       summary: {
         totalExpenses: expenses.length,
-        totalAmount: expenses.reduce((sum, exp) => sum + exp.amountCents, 0) / 100,
-        unpaidSettlements: settlements.filter(s => !s.isPaid).length,
-        totalUnpaid: settlements.filter(s => !s.isPaid).reduce((sum, s) => sum + s.amountCents, 0) / 100
+        totalAmount: expenses.reduce((sum: number, exp: any) => sum + exp.amountCents, 0) / 100,
+        unpaidSettlements: settlements.filter((s: any) => !s.isPaid).length,
+        totalUnpaid: settlements.filter((s: any) => !s.isPaid).reduce((sum: number, s: any) => sum + s.amountCents, 0) / 100
       }
     };
 

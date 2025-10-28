@@ -4,10 +4,10 @@ import prisma from '@/lib/prisma';
 // GET /api/payments/profile/[userId] - Get payment profile
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const userId = params.userId;
+    const { userId } = await params;
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -47,10 +47,10 @@ export async function GET(
 // PUT /api/payments/profile/[userId] - Update payment profile
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const userId = params.userId;
+    const { userId } = await params;
     const body = await request.json();
     const { venmo, paypal } = body;
 
