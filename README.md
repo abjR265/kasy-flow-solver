@@ -343,3 +343,4 @@ This project is part of the Lovable platform.
 ---
 
 **Built with ❤️ using [Lovable](https://lovable.dev)**
+# Trigger deployment from main branch
