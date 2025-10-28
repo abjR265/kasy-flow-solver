@@ -73,15 +73,3 @@ export function ocrResultToExpense(ocr: OCRResult, payer: string, participants: 
     confidence: ocr.confidence,
   };
 }
-
-export function ocrResultToExpense(ocr: OCRResult, payer: string, participants: string[]): ParsedExpense {
-  return {
-    merchant: ocr.merchant,
-    description: `${ocr.merchant || 'Expense'} - ${ocr.date || 'today'}`,
-    amountCents: Math.round((ocr.total || 0) * 100),
-    currency: "USD",
-    payer,
-    participants,
-    confidence: ocr.confidence,
-  };
-}
