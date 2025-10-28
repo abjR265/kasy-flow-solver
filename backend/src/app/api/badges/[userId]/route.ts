@@ -4,10 +4,10 @@ import { getUserBadges } from '@/lib/badges';
 // GET /api/badges/[userId] - Get user badges
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const userId = params.userId;
+    const { userId } = await params;
     const { searchParams } = new URL(request.url);
     const groupId = searchParams.get('groupId');
 

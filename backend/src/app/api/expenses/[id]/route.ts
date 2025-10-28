@@ -4,10 +4,10 @@ import prisma from '@/lib/prisma';
 // PUT /api/expenses/[id] - Edit expense
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const expenseId = params.id;
+    const { id: expenseId } = await params;
     const body = await request.json();
     const {
       merchant,
