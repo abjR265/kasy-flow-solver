@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/stores/useStore";
 import { parseNaturalLanguage } from "@/lib/api/nlp";
 import { extractReceiptData } from "@/lib/api/ocr";
+import { createExpense } from "@/lib/api/backend";
 import { ChatMessage } from "@/types";
 import { ExpenseCard } from "@/components/ExpenseCard";
 import { toast } from "sonner";
@@ -18,6 +19,7 @@ export default function Dashboard() {
   
   const chatMessages = useStore((state) => state.chatMessages);
   const addChatMessage = useStore((state) => state.addChatMessage);
+  const addExpense = useStore((state) => state.addExpense);
   const expenses = useStore((state) => state.expenses);
   const currentUser = useStore((state) => state.currentUser);
 
@@ -65,8 +67,107 @@ export default function Dashboard() {
     }
   };
 
-  const handleUploadReceipt = () => {
-    toast.info("Receipt upload coming soon!");
+  const handleActionClick = async (action: any) => {
+    if (action.type === "confirm_split" && action.data) {
+      try {
+        const parsedExpense = action.data;
+        
+        // Create expense in backend
+        const expenseData = {
+          groupId: "group-1", // Use active group
+          payerId: "user-1", // Current user ID
+          description: parsedExpense.description,
+          amountCents: parsedExpense.amountCents,
+          currency: parsedExpense.currency,
+          participants: parsedExpense.participants,
+          merchant: parsedExpense.merchant
+        };
+
+        const createdExpense = await createExpense(expenseData);
+        
+        if (createdExpense) {
+          // Add to local store
+          addExpense(createdExpense);
+          
+          // Add success message
+          const successMessage: ChatMessage = {
+            id: `msg-${Date.now()}-success`,
+            role: "assistant",
+            content: `✅ Expense created successfully! $${(parsedExpense.amountCents / 100).toFixed(2)} split between ${parsedExpense.participants.length} people.`,
+            timestamp: new Date().toISOString(),
+          };
+          addChatMessage(successMessage);
+          
+          toast.success("Expense created successfully!");
+        } else {
+          toast.error("Failed to create expense");
+        }
+      } catch (error) {
+        console.error("Failed to create expense:", error);
+        toast.error("Failed to create expense");
+      }
+    } else {
+      toast.info("Action clicked: " + action.label);
+    }
+  };
+
+  const handleUploadReceipt = async () => {
+    try {
+      // Create file input element
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        // Convert to base64 for demo (in production, upload to cloud storage)
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const imageUrl = e.target?.result as string;
+          
+          try {
+            const ocrResult = await extractReceiptData(imageUrl, "user-1", "group-1");
+            
+            const assistantMessage: ChatMessage = {
+              id: `msg-${Date.now()}-ocr`,
+              role: "assistant",
+              content: `📄 Receipt processed! Found ${ocrResult.merchant} for $${ocrResult.total?.toFixed(2)}. Confidence: ${Math.round(ocrResult.confidence * 100)}%`,
+              timestamp: new Date().toISOString(),
+              actions: [
+                { 
+                  type: "confirm_split", 
+                  label: "Create Expense", 
+                  data: {
+                    description: `${ocrResult.merchant} - Receipt`,
+                    amountCents: Math.round((ocrResult.total || 0) * 100),
+                    currency: "USD",
+                    payer: "@alice",
+                    participants: ["@alice", "@bob"],
+                    merchant: ocrResult.merchant,
+                    confidence: ocrResult.confidence
+                  }
+                },
+              ],
+            };
+            addChatMessage(assistantMessage);
+            
+            toast.success("Receipt processed successfully!");
+          } catch (error) {
+            console.error("Failed to process receipt:", error);
+            toast.error("Failed to process receipt");
+          }
+        };
+        
+        reader.readAsDataURL(file);
+      };
+      
+      input.click();
+    } catch (error) {
+      console.error("Failed to upload receipt:", error);
+      toast.error("Failed to upload receipt");
+    }
   };
 
   const recentExpenses = expenses.slice(0, 3);
@@ -129,7 +230,7 @@ export default function Dashboard() {
                             key={idx}
                             size="sm"
                             variant="outline"
-                            onClick={() => toast.info("Action clicked: " + action.label)}
+                            onClick={() => handleActionClick(action)}
                           >
                             {action.label}
                           </Button>

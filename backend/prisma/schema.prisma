@@ -1,0 +1,365 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// Users table for web app (replaces Telegram user IDs)
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  displayName   String
+  avatarUrl     String?
+  
+  // Payment methods
+  venmo         String?
+  paypal        String?
+  
+  // Reputation
+  repScore      Int      @default(50) // 0-100
+  
+  // Auth
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  groups        GroupMember[]
+  expenses      Expense[]
+  payments      Payment[]
+  badges        Badge[]
+  attestations  Attestation[]
+  reminders     Reminder[]
+  preferences   UserPreference?
+  
+  @@map("users")
+}
+
+// Groups
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  vaultId     String?  @unique
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  members     GroupMember[]
+  expenses    Expense[]
+  vault       Vault?
+  badges      Badge[]
+  reminders   Reminder[]
+  
+  @@map("groups")
+}
+
+// Group memberships
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  role      String   @default("member") // member, admin
+  
+  joinedAt  DateTime @default(now())
+  
+  // Relations
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+// Expenses with split logic
+model Expense {
+  id            String   @id @default(cuid())
+  groupId       String
+  payerId       String
+  
+  // Basic info
+  merchant      String?
+  description   String
+  amountCents   Int
+  currency      String   @default("USD")
+  
+  // Split type: 'simple' or 'overlapping'
+  splitType     String   @default("simple")
+  splitGroups   Json?    // For overlapping splits
+  
+  // Participants
+  participants  String[] // User IDs
+  participantNames Json? // userId -> name mapping
+  
+  // Custom shares
+  customShares  Json?    // userId -> amountCents
+  
+  // OCR data
+  receiptImageUrl String?
+  ocrData       Json?    // Full OCR result
+  
+  // Status
+  status        String   @default("pending") // pending, partially_paid, paid
+  
+  // Blockchain
+  nftReceiptMint String?
+  solanaTx      String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer         User     @relation(fields: [payerId], references: [id])
+  payments      Payment[]
+  
+  @@map("expenses")
+}
+
+// Payment requests/settlements
+model Payment {
+  id          String   @id @default(cuid())
+  expenseId   String
+  fromUserId  String
+  toUserId    String
+  
+  amountCents Int
+  method      String   // venmo, paypal, solana
+  status      String   @default("unpaid") // unpaid, processing, paid
+  
+  // Payment links
+  venmoLink   String?
+  paypalLink  String?
+  solanaPayUrl String?
+  solanaTx    String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  paidAt      DateTime?
+  
+  // Relations
+  expense     Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  fromUser    User     @relation(fields: [fromUserId], references: [id])
+  toUser      User     @relation(fields: [toUserId], references: [id])
+  
+  @@map("payments")
+}
+
+// Group vaults
+model Vault {
+  id            String   @id @default(cuid())
+  groupId       String   @unique
+  
+  name          String
+  balanceUSDC   Int      @default(0) // In cents
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  group         Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  autopayRules  AutoPayRule[]
+  transactions  VaultTransaction[]
+  yieldStrategy YieldStrategy?
+  
+  @@map("vaults")
+}
+
+// Autopay rules for vaults
+model AutoPayRule {
+  id            String   @id @default(cuid())
+  vaultId       String
+  
+  title         String
+  schedule      String   // monthly, weekly, custom
+  amountUSDC    Int      // In cents
+  nextRunISO    DateTime
+  enabled       Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  vault         Vault    @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  
+  @@map("autopay_rules")
+}
+
+// Yield strategies
+model YieldStrategy {
+  id            String   @id @default(cuid())
+  vaultId       String   @unique
+  
+  protocol      String   // Kamino, Jito
+  asset         String   @default("stUSDC")
+  apy           Float
+  allocatedUSDC Int      // In cents
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  vault         Vault    @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  
+  @@map("yield_strategies")
+}
+
+// Vault transactions
+model VaultTransaction {
+  id            String   @id @default(cuid())
+  vaultId       String
+  
+  type          String   // deposit, withdraw, autopay, yieldEarned
+  amountUSDC    Int      // In cents
+  counterparty  String?
+  solanaTx      String?
+  
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  vault         Vault    @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  
+  @@map("vault_transactions")
+}
+
+// Badges (Monthly Reset System)
+model Badge {
+  id        String   @id @default(cuid())
+  userId    String
+  groupId   String
+  badgeType String   // table_hero, pay_it_forward, even_steven
+  awardedAt DateTime @default(now())
+  month     Int      // 1-12 (for monthly reset)
+  year      Int      // e.g., 2025 (for monthly reset)
+  metadata  Json?    // e.g., { "settlementId": "...", "completionTimeHours": 120 }
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([groupId])
+  @@index([userId, month, year]) // For monthly queries
+  @@map("badges")
+}
+
+// User stats for badge calculations
+model UserStats {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  
+  paymentsOnTime      Int       @default(0)
+  consecutiveQuickPays Int       @default(0)
+  totalSettled        Int       @default(0) // Total amount settled in cents
+  lastPaymentAt       DateTime?
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  @@map("user_stats")
+}
+
+// Attestations (On-chain reputation)
+model Attestation {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // on_time_payment, default, dispute_resolved
+  dateISO   String
+  ref       String?  // Reference to expense/payment
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("attestations")
+}
+
+// Gentle Collector™ - Payment reminders
+model Reminder {
+  id                String   @id @default(cuid())
+  groupId           String
+  groupName         String
+  settlementId      String   // Reference to settlement
+  debtorUserId      String   // Who owes money (receives DM)
+  debtorUserName    String
+  creditorUserId    String   // Who is owed
+  creditorUserName  String
+  amountCents       Int
+  
+  // Reminder state
+  nextReminderAt    DateTime
+  reminderCount     Int      @default(0) // 0, 1, 2 (for T+24h, T+48h, T+7d)
+  status            String   @default("pending") // 'pending', 'snoozed', 'completed', 'opted_out'
+  
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastReminderSentAt DateTime?
+  completedAt       DateTime?
+  
+  // Relations
+  group             Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  debtor            User     @relation(fields: [debtorUserId], references: [id], onDelete: Cascade)
+  
+  @@index([groupId])
+  @@index([debtorUserId, status])
+  @@index([nextReminderAt, status])
+  @@map("reminders")
+}
+
+// User preferences for reminders
+model UserPreference {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  
+  // Reminder preferences
+  enableReminders Boolean  @default(true)
+  quietHoursStart Int      @default(22) // 22:00
+  quietHoursEnd   Int      @default(8)  // 08:00
+  timezone        String   @default("UTC")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_preferences")
+}
+
+// Pending receipts (for two-message OCR flow)
+model PendingReceipt {
+  id                String   @id @default(cuid())
+  userId            String
+  userName          String
+  groupId           String
+  messageId         Int?
+  
+  imageUrl          String
+  ocrResult         Json
+  totalCents        Int
+  merchant          String
+  
+  // Split instructions
+  caption           String?
+  participants      String[] // User IDs
+  participantNames  Json?    // userId -> name mapping
+  calculationContext Json?   // For "split 5 ways, I pay for 2"
+  
+  // TTL
+  expiresAt         DateTime
+  
+  createdAt         DateTime @default(now())
+  
+  @@index([userId, groupId])
+  @@index([expiresAt])
+  @@map("pending_receipts")
+}
