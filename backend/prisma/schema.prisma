@@ -34,7 +34,8 @@ model User {
   // Relations
   groups        GroupMember[]
   expenses      Expense[]
-  payments      Payment[]
+  paymentsFrom  Payment[] @relation("PaymentFrom")
+  paymentsTo    Payment[] @relation("PaymentTo")
   badges        Badge[]
   attestations  Attestation[]
   reminders     Reminder[]
@@ -148,8 +149,8 @@ model Payment {
   
   // Relations
   expense     Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  fromUser    User     @relation(fields: [fromUserId], references: [id])
-  toUser      User     @relation(fields: [toUserId], references: [id])
+  fromUser    User     @relation("PaymentFrom", fields: [fromUserId], references: [id])
+  toUser      User     @relation("PaymentTo", fields: [toUserId], references: [id])
   
   @@map("payments")
 }
