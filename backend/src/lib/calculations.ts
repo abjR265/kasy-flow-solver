@@ -35,7 +35,7 @@ export async function calculateBalances(groupId: string): Promise<Balance[]> {
     const balances: Record<string, Balance> = {};
 
     for (const expense of expenses) {
-      const { totalCents, payerId, participants, splitType, splitGroups } = expense;
+      const { amountCents: totalCents, payerId, participants, splitType, splitGroups } = expense;
 
       if (splitType === 'overlapping' && splitGroups) {
         // Handle overlapping splits
