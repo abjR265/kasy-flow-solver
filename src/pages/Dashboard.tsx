@@ -1,0 +1,198 @@
+import { useState } from "react";
+import { Send, Upload, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { useStore } from "@/stores/useStore";
+import { parseNaturalLanguage } from "@/lib/api/nlp";
+import { extractReceiptData } from "@/lib/api/ocr";
+import { ChatMessage } from "@/types";
+import { ExpenseCard } from "@/components/ExpenseCard";
+import { toast } from "sonner";
+
+export default function Dashboard() {
+  const [input, setInput] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  const chatMessages = useStore((state) => state.chatMessages);
+  const addChatMessage = useStore((state) => state.addChatMessage);
+  const expenses = useStore((state) => state.expenses);
+  const currentUser = useStore((state) => state.currentUser);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMessage: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      role: "user",
+      content: input,
+      timestamp: new Date().toISOString(),
+    };
+
+    addChatMessage(userMessage);
+    setInput("");
+    setIsProcessing(true);
+
+    try {
+      const parsed = await parseNaturalLanguage(input);
+      
+      if (parsed) {
+        const assistantMessage: ChatMessage = {
+          id: `msg-${Date.now()}-1`,
+          role: "assistant",
+          content: `Parsed as ${parsed.description}, $${(parsed.amountCents / 100).toFixed(2)}, payer ${parsed.payer}, participants ${parsed.participants.join(", ")}.`,
+          timestamp: new Date().toISOString(),
+          actions: [
+            { type: "confirm_split", label: "Confirm & Split", data: parsed },
+          ],
+        };
+        addChatMessage(assistantMessage);
+      } else {
+        const errorMessage: ChatMessage = {
+          id: `msg-${Date.now()}-1`,
+          role: "assistant",
+          content: "I couldn't parse that expense. Try including an amount and participants like: 'Dinner $60 split with @bob @carol'",
+          timestamp: new Date().toISOString(),
+        };
+        addChatMessage(errorMessage);
+      }
+    } catch (error) {
+      toast.error("Failed to parse expense");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUploadReceipt = () => {
+    toast.info("Receipt upload coming soon!");
+  };
+
+  const recentExpenses = expenses.slice(0, 3);
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <h1 className="text-4xl font-bold">
+          <span className="gradient-text">AI-Powered</span> Expense Splitting
+        </h1>
+        <p className="text-muted-foreground">
+          Just type naturally or upload a receipt. KASY handles the rest.
+        </p>
+      </div>
+
+      {/* Chat Feed */}
+      <Card className="border-2">
+        <CardContent className="p-6 space-y-4">
+          {chatMessages.length === 0 ? (
+            <div className="text-center py-12 space-y-4">
+              <div className="w-16 h-16 rounded-full gradient-primary mx-auto flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Start a conversation</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Type something like "Dinner $60 split with @bob @carol" or upload a receipt to get started.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+              {chatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex gap-3 ${
+                    message.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  {message.role !== "user" && (
+                    <Avatar className="w-8 h-8">
+                      <div className="w-full h-full gradient-primary flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 text-white" />
+                      </div>
+                    </Avatar>
+                  )}
+                  
+                  <div className={`max-w-[80%] space-y-2 ${message.role === "user" ? "items-end" : "items-start"} flex flex-col`}>
+                    <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
+                      <CardContent className="p-3">
+                        <p className="text-sm">{message.content}</p>
+                      </CardContent>
+                    </Card>
+                    
+                    {message.actions && (
+                      <div className="flex gap-2">
+                        {message.actions.map((action, idx) => (
+                          <Button
+                            key={idx}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => toast.info("Action clicked: " + action.label)}
+                          >
+                            {action.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {message.role === "user" && currentUser && (
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={currentUser.avatarUrl} />
+                      <AvatarFallback>{currentUser.displayName.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="space-y-2">
+            <Textarea
+              placeholder="Type naturally: 'Dinner $60 split with @bob @carol' or try /split, /help..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              rows={3}
+              className="resize-none"
+            />
+            <div className="flex items-center justify-between">
+              <Button variant="outline" size="sm" onClick={handleUploadReceipt}>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Receipt
+              </Button>
+              <Button 
+                onClick={handleSend} 
+                disabled={isProcessing || !input.trim()}
+                className="gap-2"
+              >
+                {isProcessing ? "Processing..." : "Send"}
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Expenses */}
+      {recentExpenses.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Recent Expenses</h2>
+          <div className="grid gap-4">
+            {recentExpenses.map((expense) => (
+              <ExpenseCard key={expense.id} expense={expense} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
