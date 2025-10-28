@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         participantNames: participantNames ? participantNames as any : pendingReceipt.participantNames,
         customShares: customShares ? customShares as any : null,
         receiptImageUrl: pendingReceipt.imageUrl,
-        ocrData: pendingReceipt.ocrResult,
+        ocrData: pendingReceipt.ocrResult as any,
         status: 'pending'
       },
       include: {
