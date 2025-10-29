@@ -116,17 +116,11 @@ export async function parseExpenseTextWithAI(text: string): Promise<{
       messages: [
         {
           role: 'system',
-          content: `You are a helpful assistant that extracts expense information from text. Extract the amount (just the number) and a SHORT 1-2 word description of what the expense was for (e.g., "lunch", "coffee", "dinner", "uber", "groceries"). 
-
-Also identify:
-- The payer (who paid for the expense)
-- The beneficiaries (who should split the cost)
-
-Return JSON with fields: amount (number), description (string), payer (string), beneficiaries (array of strings), confidence (0.0-1.0).`
+          content: 'You are a helpful assistant that extracts expense information from text. Extract the amount (just the number) and a SHORT 1-2 word description of what the expense was for (e.g., "lunch", "coffee", "dinner", "uber", "groceries"). Return JSON with fields: amount (number) and description (string).'
         },
         {
           role: 'user',
-          content: `Extract the amount, description, payer, and beneficiaries from: "${text}"`
+          content: `Extract the amount and expense description from: "${text}"`
         }
       ],
       response_format: { type: 'json_object' },
@@ -144,9 +138,9 @@ Return JSON with fields: amount (number), description (string), payer (string), 
     return {
       amount: parsed.amount ? parseFloat(parsed.amount.toString()) : undefined,
       description: parsed.description || 'Expense',
-      confidence: parsed.confidence || 0.95,
-      beneficiaries: parsed.beneficiaries || [],
-      payer: parsed.payer
+      confidence: 0.95, // High confidence with AI
+      beneficiaries: [], // Will be populated from entities/mentions in the frontend
+      payer: undefined
     };
 
   } catch (error) {
