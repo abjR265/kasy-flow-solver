@@ -45,16 +45,20 @@ export default function Dashboard() {
         const data = await response.json();
         if (data.success && data.expenses) {
           // Transform backend expenses to match frontend Expense type
-          const transformedExpenses = data.expenses.map((exp: any) => {
+          // Filter out any null/undefined expenses first
+          const transformedExpenses = data.expenses
+            .filter((exp: any) => exp && typeof exp === 'object')
+            .map((exp: any) => {
             console.log('Backend expense:', exp);
             
             // Get participant info from payments or use participants array
             const participantHandles = Array.isArray(exp.participants) 
-              ? exp.participants.map((userId: string) => {
-                  if (!userId) return '@unknown';
-                  const name = exp.participantNames?.[userId] || userId;
-                  return (typeof name === 'string' && name.startsWith('@')) ? name : `@${name}`;
-                }) 
+              ? exp.participants
+                  .filter((userId: any) => userId && typeof userId === 'string')
+                  .map((userId: string) => {
+                    const name = exp.participantNames?.[userId] || userId;
+                    return (typeof name === 'string' && name.startsWith('@')) ? name : `@${name}`;
+                  }) 
               : [];
             
             // Safe payer info extraction
