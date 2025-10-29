@@ -3,8 +3,7 @@
 if [ "$VERCEL_GIT_COMMIT_REF" != "backend" ]; then
   echo "🛑 Skipping build - backend only builds from backend branch"
   exit 0
-else
-  echo "✅ Building backend from backend branch"
-  exit 1
 fi
+echo "✅ Building backend from backend branch"
+exit 1
 
