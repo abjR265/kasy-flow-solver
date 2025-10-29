@@ -6,6 +6,6 @@
     }
   },
   "buildCommand": "npm run build",
-  "framework": "vite"
+  "framework": "vite",
+  "ignoreCommand": "bash ignore-build.sh"
 }
-
