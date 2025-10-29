@@ -9,6 +9,7 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "ignoreCommand": "bash ignore-build.sh",
   "crons": [
     {
       "path": "/api/cron/reminders",
