@@ -45,18 +45,31 @@ export default function Dashboard() {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/expenses?groupId=group-1`, {
+      console.log('🗑️ Clearing database...');
+      const url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/expenses?groupId=group-1`;
+      console.log('DELETE request to:', url);
+      
+      const response = await fetch(url, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
+
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
 
       if (response.ok) {
         setRealExpenses([]);
-        toast.success('Database cleared successfully!');
+        toast.success(`Database cleared! Deleted ${data.deletedCount || 0} expenses.`);
+        // Refresh to confirm
+        await fetchRealExpenses();
       } else {
-        toast.error('Failed to clear database');
+        toast.error(`Failed to clear database: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Failed to clear database:', error);
+      console.error('❌ Failed to clear database:', error);
       toast.error('Failed to clear database');
     }
   };
@@ -501,7 +514,7 @@ export default function Dashboard() {
               </Button>
               {showRealData && (
                 <Button
-                  variant="destructive"
+                  variant="outline"
                   size="sm"
                   onClick={handleClearDatabase}
                 >
