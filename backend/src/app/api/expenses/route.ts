@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
       create: {
         id: payerId,
         email: `${payerId}@temp.com`,
-        username: payerId === 'user-1' ? 'alice' : payerId, // Map user-1 to alice
         displayName: payerId === 'user-1' ? 'Alice' : payerId,
         avatarUrl: payerId === 'user-1' ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice' : '',
         repScore: 50
@@ -70,7 +69,6 @@ export async function POST(request: NextRequest) {
         create: {
           id: participantId,
           email: `${cleanName}@temp.com`,
-          username: cleanName.toLowerCase(),
           displayName: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
           avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanName}`,
           repScore: 50

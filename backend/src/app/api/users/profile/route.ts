@@ -30,15 +30,11 @@ export async function POST(request: NextRequest) {
 
     console.log('💾 Updating profile for user:', userId);
 
-    // Extract username from handle
-    const username = handle?.startsWith('@') ? handle.slice(1) : handle;
-
     // Update user
     const user = await prisma.user.upsert({
       where: { id: userId },
       update: {
         displayName: displayName || undefined,
-        username: username || undefined,
         venmo: venmo || undefined,
         paypal: paypal || undefined,
         avatarUrl: avatarUrl || undefined,
@@ -48,7 +44,6 @@ export async function POST(request: NextRequest) {
         id: userId,
         email: `${userId}@temp.com`,
         displayName: displayName || userId,
-        username: username || userId,
         venmo: venmo,
         paypal: paypal,
         avatarUrl: avatarUrl,
@@ -63,8 +58,7 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         displayName: user.displayName,
-        username: user.username,
-        handle: `@${user.username}`,
+        handle: handle || `@${user.displayName.toLowerCase()}`,
         venmo: user.venmo,
         paypal: user.paypal,
         avatarUrl: user.avatarUrl
