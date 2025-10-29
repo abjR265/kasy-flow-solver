@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseExpenseTextWithAI, parseOverlappingSplits } from '@/lib/openai';
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle preflight requests
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 // POST /api/expenses/parse - Natural Language Parsing
 export async function POST(request: NextRequest) {
   try {
@@ -32,13 +44,13 @@ export async function POST(request: NextRequest) {
         payer: parsed.payer
       },
       overlapping: overlappingResult
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('❌ NLP parsing failed:', error);
     return NextResponse.json(
       { error: 'Failed to parse expense text' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
