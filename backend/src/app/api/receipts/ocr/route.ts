@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processReceiptOCR } from '@/lib/openai';
 import prisma from '@/lib/prisma';
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle preflight requests
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 // POST /api/receipts/ocr - Smart OCR Receipt Processing
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { imageUrl, userId, groupId } = body;
 
     if (!imageUrl) {
-      return NextResponse.json({ error: 'Image URL is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Image URL is required' }, { status: 400, headers: corsHeaders });
     }
 
     console.log('🔍 Processing receipt OCR for user:', userId);
@@ -40,13 +52,13 @@ export async function POST(request: NextRequest) {
       receiptId: pendingReceipt.id,
       ocrResult,
       expiresAt: expiresAt.toISOString()
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('❌ OCR processing failed:', error);
     return NextResponse.json(
       { error: 'Failed to process receipt' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
