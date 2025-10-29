@@ -515,15 +515,7 @@ export default function Dashboard() {
               >
                 {showRealData ? "📊 Show Mock Data" : "🔥 Show Real Data"}
               </Button>
-              {showRealData && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleClearDatabase}
-                >
-                  🗑️ Clear Database
-                </Button>
-              )}
+              {/* Clear Database button removed for demo - can clear manually via Vercel dashboard */}
             </div>
           </div>
           <div className="grid gap-4">
