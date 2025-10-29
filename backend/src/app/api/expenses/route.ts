@@ -29,6 +29,27 @@ export async function POST(request: NextRequest) {
 
     console.log('💾 Creating expense:', description, amountCents);
 
+    // First, ensure user and group exist (create if needed)
+    await prisma.user.upsert({
+      where: { id: payerId },
+      update: {},
+      create: {
+        id: payerId,
+        email: `${payerId}@temp.com`,
+        displayName: payerId,
+        repScore: 50
+      }
+    });
+
+    await prisma.group.upsert({
+      where: { id: groupId },
+      update: {},
+      create: {
+        id: groupId,
+        name: groupId
+      }
+    });
+
     const expense = await prisma.expense.create({
       data: {
         groupId,
