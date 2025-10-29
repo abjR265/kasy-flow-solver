@@ -18,7 +18,7 @@ export default function Dashboard() {
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [realExpenses, setRealExpenses] = useState<any[]>([]);
-  const [showRealData, setShowRealData] = useState(true);
+  const [showRealData, setShowRealData] = useState(false); // Default to mock data for demo
   const [pendingOCR, setPendingOCR] = useState<{
     merchant: string;
     totalCents: number;

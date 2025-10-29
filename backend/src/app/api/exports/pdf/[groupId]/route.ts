@@ -4,6 +4,21 @@ import { calculateBalances, calculateSettlements } from '@/lib/calculations';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle preflight
+export async function OPTIONS() {
+  return new NextResponse(null, { 
+    status: 204,
+    headers: corsHeaders
+  });
+}
+
 // GET /api/exports/pdf/[groupId] - Generate PDF export
 export async function GET(
   request: NextRequest,
@@ -152,6 +167,7 @@ export async function GET(
 
     return new NextResponse(pdfBuffer, {
       headers: {
+        ...corsHeaders,
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': pdfBuffer.length.toString()
