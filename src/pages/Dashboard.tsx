@@ -49,28 +49,37 @@ export default function Dashboard() {
             console.log('Backend expense:', exp);
             
             // Get participant info from payments or use participants array
-            const participantHandles = exp.participants?.map((userId: string) => {
-              const name = exp.participantNames?.[userId] || userId;
-              return name.startsWith('@') ? name : `@${name}`;
-            }) || [];
+            const participantHandles = Array.isArray(exp.participants) 
+              ? exp.participants.map((userId: string) => {
+                  if (!userId) return '@unknown';
+                  const name = exp.participantNames?.[userId] || userId;
+                  return (typeof name === 'string' && name.startsWith('@')) ? name : `@${name}`;
+                }) 
+              : [];
+            
+            // Safe payer info extraction
+            const payerUsername = exp.payer?.username || exp.payer?.displayName || 'User';
+            const payerHandle = (typeof payerUsername === 'string' && payerUsername.startsWith('@')) 
+              ? payerUsername 
+              : `@${payerUsername}`;
             
             return {
-              id: exp.id,
-              groupId: exp.groupId,
+              id: exp.id || `exp-${Date.now()}`,
+              groupId: exp.groupId || 'default',
               merchant: exp.merchant || 'Unknown',
-              description: exp.description,
-              amountCents: exp.amountCents, // Correct field name!
+              description: exp.description || 'Expense',
+              amountCents: exp.amountCents || 0, // Correct field name!
               currency: exp.currency || 'USD',
               payer: { 
-                id: exp.payerId, 
-                handle: `@${exp.payer?.username || 'user'}`, 
+                id: exp.payerId || 'unknown', 
+                handle: payerHandle, 
                 displayName: exp.payer?.displayName || exp.payer?.username || 'User', 
                 avatarUrl: exp.payer?.avatarUrl || '' 
               },
               participants: participantHandles,
-              dateISO: exp.createdAt,
+              dateISO: exp.createdAt || new Date().toISOString(),
               status: 'pending' as const,
-              receiptImageUrl: exp.receiptImageUrl
+              receiptImageUrl: exp.receiptImageUrl || undefined
             };
           });
           setRealExpenses(transformedExpenses);
