@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Send, Upload, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,6 +16,8 @@ import { toast } from "sonner";
 export default function Dashboard() {
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [realExpenses, setRealExpenses] = useState<any[]>([]);
+  const [showRealData, setShowRealData] = useState(true);
   const [pendingOCR, setPendingOCR] = useState<{
     merchant: string;
     totalCents: number;
@@ -28,6 +30,41 @@ export default function Dashboard() {
   const addExpense = useStore((state) => state.addExpense);
   const expenses = useStore((state) => state.expenses);
   const currentUser = useStore((state) => state.currentUser);
+
+  // Fetch real expenses on mount
+  useEffect(() => {
+    if (showRealData) {
+      fetchRealExpenses();
+    }
+  }, [showRealData]);
+
+  const fetchRealExpenses = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/expenses?groupId=group-1`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.expenses) {
+          // Transform backend expenses to match frontend Expense type
+          const transformedExpenses = data.expenses.map((exp: any) => ({
+            id: exp.id,
+            groupId: exp.groupId,
+            merchant: exp.merchant || 'Unknown',
+            description: exp.description,
+            amountCents: exp.totalCents,
+            currency: exp.currency || 'USD',
+            payer: { id: exp.payerId, handle: `@${exp.payer?.username || 'user'}`, displayName: exp.payer?.username || 'User', avatarUrl: '' },
+            participants: [], // Would need to fetch from relations
+            dateISO: exp.createdAt,
+            status: 'pending' as const,
+            receiptImageUrl: exp.receiptImageUrl
+          }));
+          setRealExpenses(transformedExpenses);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch expenses:', error);
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -150,6 +187,11 @@ export default function Dashboard() {
         if (createdExpense) {
           // Add to local store
           addExpense(createdExpense);
+          
+          // Refresh real expenses list
+          if (showRealData) {
+            await fetchRealExpenses();
+          }
           
           // Add success message
           const successMessage: ChatMessage = {
@@ -354,11 +396,20 @@ export default function Dashboard() {
       </Card>
 
       {/* Recent Expenses */}
-      {recentExpenses.length > 0 && (
+      {(showRealData ? realExpenses : recentExpenses).length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Recent Expenses</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Recent Expenses</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRealData(!showRealData)}
+            >
+              {showRealData ? "📊 Show Mock Data" : "🔥 Show Real Data"}
+            </Button>
+          </div>
           <div className="grid gap-4">
-            {recentExpenses.map((expense) => (
+            {(showRealData ? realExpenses : recentExpenses).map((expense) => (
               <ExpenseCard key={expense.id} expense={expense} />
             ))}
           </div>
