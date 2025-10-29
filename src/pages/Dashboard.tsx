@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/stores/useStore";
 import { parseNaturalLanguage } from "@/lib/api/nlp";
 import { extractReceiptData } from "@/lib/api/ocr";
+import { createExpense } from "@/lib/api/backend";
 import { ChatMessage } from "@/types";
 import { ExpenseCard } from "@/components/ExpenseCard";
 import { toast } from "sonner";
@@ -69,6 +70,50 @@ export default function Dashboard() {
     toast.info("Receipt upload coming soon!");
   };
 
+  const handleActionClick = async (action: any) => {
+    if (action.type === "confirm_split" && action.data) {
+      try {
+        const parsedExpense = action.data;
+        
+        // Create expense in backend
+        const expenseData = {
+          groupId: activeGroupId || "group-1",
+          payerId: currentUser?.id || "user-1",
+          description: parsedExpense.description,
+          amountCents: parsedExpense.amountCents,
+          currency: parsedExpense.currency,
+          participants: parsedExpense.participants.map((p: string) => p.replace('@', '')),
+          splitType: "simple"
+        };
+
+        const createdExpense = await createExpense(expenseData);
+        
+        if (createdExpense) {
+          // Add to local store
+          addExpense(createdExpense);
+          
+          // Add success message
+          const successMessage: ChatMessage = {
+            id: `msg-${Date.now()}-success`,
+            role: "assistant",
+            content: `✅ Expense created successfully! $${(parsedExpense.amountCents / 100).toFixed(2)} split between ${parsedExpense.participants.length} people.`,
+            timestamp: new Date().toISOString(),
+          };
+          addChatMessage(successMessage);
+          
+          toast.success("Expense created and saved to database!");
+        } else {
+          toast.error("Failed to create expense");
+        }
+      } catch (error) {
+        console.error("Failed to create expense:", error);
+        toast.error("Failed to create expense");
+      }
+    } else {
+      toast.info("Action clicked: " + action.label);
+    }
+  };
+
   const recentExpenses = expenses.slice(0, 3);
 
   return (
@@ -128,8 +173,7 @@ export default function Dashboard() {
                           <Button
                             key={idx}
                             size="sm"
-                            variant="outline"
-                            onClick={() => toast.info("Action clicked: " + action.label)}
+                            onClick={() => handleActionClick(action)}
                           >
                             {action.label}
                           </Button>
