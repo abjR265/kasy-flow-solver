@@ -116,31 +116,17 @@ export async function parseExpenseTextWithAI(text: string): Promise<{
       messages: [
         {
           role: 'system',
-          content: `You are a helpful assistant that extracts expense information from text. 
+          content: `You are a helpful assistant that extracts expense information from text. Extract the amount (just the number) and a SHORT 1-2 word description of what the expense was for (e.g., "lunch", "coffee", "dinner", "uber", "groceries"). 
 
-EXTRACT:
-1. **amount**: The dollar amount as a NUMBER (e.g., 60 for "60" or "$60" or "60 dollars")
-2. **description**: A SHORT 1-2 word description (e.g., "dinner", "lunch", "coffee", "uber")
-3. **payer**: Who paid (if mentioned, otherwise null)
-4. **beneficiaries**: Array of names who should split the cost (extract from phrases like "split with jack", "with bob and alice", "@bob @carol")
+Also identify:
+- The payer (who paid for the expense)
+- The beneficiaries (who should split the cost)
 
-IMPORTANT:
-- Amount can be written as: "60", "$60", "60 dollars", "$60.00"
-- Beneficiaries can be: "jack", "@jack", "with jack", "split with jack and jill"
-- Extract ALL names mentioned after "with", "split with", "@" symbols
-- DO NOT include @ symbols in beneficiary names
-- If no beneficiaries mentioned, return empty array
-
-EXAMPLES:
-"dinner 60 split with jack" → {"amount": 60, "description": "dinner", "payer": null, "beneficiaries": ["jack"], "confidence": 0.95}
-"lunch $25 with @bob @alice" → {"amount": 25, "description": "lunch", "payer": null, "beneficiaries": ["bob", "alice"], "confidence": 0.95}
-"$30 uber" → {"amount": 30, "description": "uber", "payer": null, "beneficiaries": [], "confidence": 0.95}
-
-Return ONLY valid JSON with fields: amount (number), description (string), payer (string or null), beneficiaries (array of strings), confidence (0.0-1.0).`
+Return JSON with fields: amount (number), description (string), payer (string), beneficiaries (array of strings), confidence (0.0-1.0).`
         },
         {
           role: 'user',
-          content: `Extract expense data from: "${text}"`
+          content: `Extract the amount, description, payer, and beneficiaries from: "${text}"`
         }
       ],
       response_format: { type: 'json_object' },
