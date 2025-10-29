@@ -5,7 +5,7 @@
   "description": "KASY Phase 1 - Next.js Backend API",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate --no-engine && prisma generate && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
@@ -13,7 +13,7 @@
     "db:push": "dotenv -e .env.local -- prisma db push",
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
-    "postinstall": "prisma generate --no-engine && prisma generate"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.18.0",
