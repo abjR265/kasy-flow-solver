@@ -1,0 +1,11 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "backend": false
+    }
+  },
+  "buildCommand": "npm run build",
+  "framework": "vite"
+}
+
