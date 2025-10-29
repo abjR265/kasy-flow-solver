@@ -4,12 +4,8 @@ const nextConfig: NextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('_http_common');
-    }
-    return config;
-  },
+  // Empty turbopack config to silence Next.js 16 warning
+  turbopack: {},
 };
 
 export default nextConfig;
