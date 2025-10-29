@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// CORS headers
+// CORS headers - v2024-10-29
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400', // Cache preflight for 24 hours
 };
 
 // Handle preflight requests (for all methods including DELETE)
 export async function OPTIONS() {
-  return NextResponse.json({}, { 
-    headers: {
-      ...corsHeaders,
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    }
+  return new NextResponse(null, { 
+    status: 204,
+    headers: corsHeaders
   });
 }
 
