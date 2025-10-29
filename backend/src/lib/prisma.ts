@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 
+// Prisma client singleton for serverless
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
 // Initialize Prisma with pooled connection (pgbouncer mode to avoid prepared statement conflicts)
 const getDatabaseUrl = () => {
   const baseUrl = process.env.DATABASE_URL || '';
@@ -10,13 +13,16 @@ const getDatabaseUrl = () => {
   return `${baseUrl}?pgbouncer=true`;
 };
 
-const prisma = new PrismaClient({
+const prisma = globalForPrisma.prisma || new PrismaClient({
   datasources: {
     db: {
       url: getDatabaseUrl()
     }
-  }
+  },
+  log: ['error', 'warn'],
 });
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // Helper function to retry database operations with fresh client on prepared statement errors
 export async function retryWithFreshClient<T>(
