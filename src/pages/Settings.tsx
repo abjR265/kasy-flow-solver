@@ -25,12 +25,57 @@ export default function Settings() {
     escalation: true,
   });
 
-  const handleSaveProfile = () => {
-    toast.success("Profile updated successfully!");
+  const handleSaveProfile = async () => {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: 'user-1', // Current user ID
+          displayName: profile.displayName,
+          handle: profile.handle,
+          venmo: profile.venmo,
+          paypal: profile.paypal
+        })
+      });
+
+      if (response.ok) {
+        toast.success("Profile updated successfully!");
+      } else {
+        toast.error("Failed to update profile");
+      }
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      toast.error("Failed to update profile");
+    }
   };
 
-  const handleSaveNotifications = () => {
-    toast.success("Notification preferences saved!");
+  const handleSaveNotifications = async () => {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: 'user-1',
+          preferences: notifications
+        })
+      });
+
+      if (response.ok) {
+        toast.success("Notification preferences saved!");
+      } else {
+        toast.error("Failed to save preferences");
+      }
+    } catch (error) {
+      console.error('Failed to save preferences:', error);
+      toast.error("Failed to save preferences");
+    }
   };
 
   return (

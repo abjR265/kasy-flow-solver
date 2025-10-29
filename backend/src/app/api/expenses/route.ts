@@ -52,20 +52,27 @@ export async function POST(request: NextRequest) {
       create: {
         id: payerId,
         email: `${payerId}@temp.com`,
-        displayName: payerId,
+        username: payerId === 'user-1' ? 'alice' : payerId, // Map user-1 to alice
+        displayName: payerId === 'user-1' ? 'Alice' : payerId,
+        avatarUrl: payerId === 'user-1' ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice' : '',
         repScore: 50
       }
     });
 
     // Create all participant users
     for (const participantId of participants) {
+      const participantName = participantNames?.[participantId] || participantId;
+      const cleanName = participantName.startsWith('@') ? participantName.slice(1) : participantName;
+      
       await prisma.user.upsert({
         where: { id: participantId },
         update: {},
         create: {
           id: participantId,
-          email: `${participantId}@temp.com`,
-          displayName: participantNames?.[participantId] || participantId,
+          email: `${cleanName}@temp.com`,
+          username: cleanName.toLowerCase(),
+          displayName: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
+          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanName}`,
           repScore: 50
         }
       });
