@@ -8,9 +8,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// Handle preflight requests
+// Handle preflight requests (for all methods including DELETE)
 export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
+  return NextResponse.json({}, { 
+    headers: {
+      ...corsHeaders,
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    }
+  });
 }
 
 // POST /api/expenses - Create expense

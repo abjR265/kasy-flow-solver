@@ -199,7 +199,7 @@ export default function Dashboard() {
         const splitMatch = input.match(/(?:split|share|divide)\s+with\s+(.+?)(?:\s*$|\.)/i) || 
                           input.match(/for\s+me\s+and\s+(.+?)(?:\s*$|\.)/i);
         
-        let participants: string[] = ["@alice"]; // Default payer
+        let participants: string[] = []; // Backend expects participants WITHOUT payer
         
         if (splitMatch) {
           const namesText = splitMatch[1];
@@ -209,7 +209,8 @@ export default function Dashboard() {
             .map(n => (typeof n === 'string' && n.startsWith('@')) ? n : `@${n}`);
           
           if (names.length > 0) {
-            participants = ["@alice", ...names]; // Include payer + mentioned people
+            // Backend expects participants WITHOUT payer (payer is separate field)
+            participants = names; // Only the OTHER people
           }
         }
         
@@ -297,11 +298,12 @@ export default function Dashboard() {
             await fetchRealExpenses();
           }
           
-          // Add success message
+          // Add success message (participants + payer = total people)
+          const totalPeople = (parsedExpense.participants?.length || 0) + 1; // +1 for payer
           const successMessage: ChatMessage = {
             id: `msg-${Date.now()}-success`,
             role: "assistant",
-            content: `✅ Expense created successfully! $${(parsedExpense.amountCents / 100).toFixed(2)} split between ${parsedExpense.participants.length} people.`,
+            content: `✅ Expense created successfully! $${(parsedExpense.amountCents / 100).toFixed(2)} split between ${totalPeople} people.`,
             timestamp: new Date().toISOString(),
           };
           addChatMessage(successMessage);

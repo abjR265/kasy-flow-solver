@@ -43,7 +43,8 @@ export async function parseNaturalLanguage(text: string): Promise<ParsedExpense 
       amountCents: parsed.amount ? Math.round(parsed.amount * 100) : 0,
       currency: "USD",
       payer: payer,
-      participants: participants.length > 0 ? participants : ["@alice"],
+      // Backend expects participants WITHOUT payer (empty array if just the payer)
+      participants: participants.length > 0 ? participants : [],
       confidence: parsed.confidence || 0.5,
     };
   } catch (error) {
