@@ -41,6 +41,20 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Create all participant users
+    for (const participantId of participants) {
+      await prisma.user.upsert({
+        where: { id: participantId },
+        update: {},
+        create: {
+          id: participantId,
+          email: `${participantId}@temp.com`,
+          displayName: participantNames?.[participantId] || participantId,
+          repScore: 50
+        }
+      });
+    }
+
     await prisma.group.upsert({
       where: { id: groupId },
       update: {},
@@ -49,6 +63,42 @@ export async function POST(request: NextRequest) {
         name: groupId
       }
     });
+
+    // Add all participants as group members
+    for (const participantId of participants) {
+      await prisma.groupMember.upsert({
+        where: {
+          groupId_userId: {
+            groupId,
+            userId: participantId
+          }
+        },
+        update: {},
+        create: {
+          groupId,
+          userId: participantId,
+          role: 'member'
+        }
+      });
+    }
+
+    // Also add payer as group member if not already in participants
+    if (!participants.includes(payerId)) {
+      await prisma.groupMember.upsert({
+        where: {
+          groupId_userId: {
+            groupId,
+            userId: payerId
+          }
+        },
+        update: {},
+        create: {
+          groupId,
+          userId: payerId,
+          role: 'member'
+        }
+      });
+    }
 
     const expense = await prisma.expense.create({
       data: {
