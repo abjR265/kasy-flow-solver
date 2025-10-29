@@ -43,54 +43,76 @@ export default function Dashboard() {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/expenses?groupId=group-1`);
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.expenses) {
+        console.log('📦 Raw backend response:', data);
+        
+        if (data.success && Array.isArray(data.expenses)) {
+          console.log('📋 Number of expenses:', data.expenses.length);
+          
           // Transform backend expenses to match frontend Expense type
           // Filter out any null/undefined expenses first
           const transformedExpenses = data.expenses
-            .filter((exp: any) => exp && typeof exp === 'object')
+            .filter((exp: any) => {
+              if (!exp || typeof exp !== 'object') {
+                console.warn('⚠️ Skipping invalid expense:', exp);
+                return false;
+              }
+              return true;
+            })
             .map((exp: any) => {
-            console.log('Backend expense:', exp);
+              try {
+                console.log('🔄 Transforming expense:', exp.id);
+                
+                // Get participant info from payments or use participants array
+                const participantHandles = Array.isArray(exp.participants) 
+                  ? exp.participants
+                      .filter((userId: any) => userId && typeof userId === 'string')
+                      .map((userId: string) => {
+                        const name = exp.participantNames?.[userId] || userId;
+                        return (typeof name === 'string' && name.startsWith('@')) ? name : `@${name}`;
+                      }) 
+                  : [];
+                
+                // Safe payer info extraction
+                const payerUsername = exp.payer?.username || exp.payer?.displayName || 'User';
+                const payerHandle = (typeof payerUsername === 'string' && payerUsername.startsWith('@')) 
+                  ? payerUsername 
+                  : `@${payerUsername}`;
+                
+                return {
+                  id: exp.id || `exp-${Date.now()}`,
+                  groupId: exp.groupId || 'default',
+                  merchant: exp.merchant || 'Unknown',
+                  description: exp.description || 'Expense',
+                  amountCents: exp.amountCents || 0,
+                  currency: exp.currency || 'USD',
+                  payer: { 
+                    id: exp.payerId || 'unknown', 
+                    handle: payerHandle, 
+                    displayName: exp.payer?.displayName || exp.payer?.username || 'User', 
+                    avatarUrl: exp.payer?.avatarUrl || '' 
+                  },
+                  participants: participantHandles,
+                  dateISO: exp.createdAt || new Date().toISOString(),
+                  status: 'pending' as const,
+                  receiptImageUrl: exp.receiptImageUrl || undefined
+                };
+              } catch (transformError) {
+                console.error('❌ Failed to transform expense:', exp.id, transformError);
+                return null;
+              }
+            })
+            .filter((exp: any) => exp !== null);
             
-            // Get participant info from payments or use participants array
-            const participantHandles = Array.isArray(exp.participants) 
-              ? exp.participants
-                  .filter((userId: any) => userId && typeof userId === 'string')
-                  .map((userId: string) => {
-                    const name = exp.participantNames?.[userId] || userId;
-                    return (typeof name === 'string' && name.startsWith('@')) ? name : `@${name}`;
-                  }) 
-              : [];
-            
-            // Safe payer info extraction
-            const payerUsername = exp.payer?.username || exp.payer?.displayName || 'User';
-            const payerHandle = (typeof payerUsername === 'string' && payerUsername.startsWith('@')) 
-              ? payerUsername 
-              : `@${payerUsername}`;
-            
-            return {
-              id: exp.id || `exp-${Date.now()}`,
-              groupId: exp.groupId || 'default',
-              merchant: exp.merchant || 'Unknown',
-              description: exp.description || 'Expense',
-              amountCents: exp.amountCents || 0, // Correct field name!
-              currency: exp.currency || 'USD',
-              payer: { 
-                id: exp.payerId || 'unknown', 
-                handle: payerHandle, 
-                displayName: exp.payer?.displayName || exp.payer?.username || 'User', 
-                avatarUrl: exp.payer?.avatarUrl || '' 
-              },
-              participants: participantHandles,
-              dateISO: exp.createdAt || new Date().toISOString(),
-              status: 'pending' as const,
-              receiptImageUrl: exp.receiptImageUrl || undefined
-            };
-          });
+          console.log('✅ Transformed expenses:', transformedExpenses.length);
           setRealExpenses(transformedExpenses);
+        } else {
+          console.warn('⚠️ Invalid response format:', data);
         }
+      } else {
+        console.error('❌ HTTP error:', response.status);
       }
     } catch (error) {
-      console.error('Failed to fetch expenses:', error);
+      console.error('❌ Failed to fetch expenses:', error);
     }
   };
 
