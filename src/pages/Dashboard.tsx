@@ -16,6 +16,12 @@ import { toast } from "sonner";
 export default function Dashboard() {
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingOCR, setPendingOCR] = useState<{
+    merchant: string;
+    totalCents: number;
+    confidence: number;
+    timestamp: number;
+  } | null>(null);
   
   const chatMessages = useStore((state) => state.chatMessages);
   const addChatMessage = useStore((state) => state.addChatMessage);
@@ -38,27 +44,83 @@ export default function Dashboard() {
     setIsProcessing(true);
 
     try {
-      const parsed = await parseNaturalLanguage(input);
+      // Check if there's a pending OCR result (within 5 minutes)
+      const hasPendingOCR = pendingOCR && (Date.now() - pendingOCR.timestamp < 5 * 60 * 1000);
       
-      if (parsed) {
+      // Check for split keywords (like KASY_MVP)
+      const hasSplitKeywords = /(?:split|share|divide)\s+(?:with|between|among)|for\s+me\s+and/i.test(input);
+      
+      if (hasPendingOCR && hasSplitKeywords) {
+        // OCR Follow-up: Use pending OCR amount + extract participants from text
+        console.log('🎯 OCR Follow-up detected!', pendingOCR);
+        
+        // Extract participant names from "split with alice bob" or "@alice @bob"
+        const splitMatch = input.match(/(?:split|share|divide)\s+with\s+(.+?)(?:\s*$|\.)/i) || 
+                          input.match(/for\s+me\s+and\s+(.+?)(?:\s*$|\.)/i);
+        
+        let participants: string[] = ["@alice"]; // Default payer
+        
+        if (splitMatch) {
+          const namesText = splitMatch[1];
+          const names = namesText.split(/[\s,]+|and\b/i)
+            .map(n => n.trim())
+            .filter(n => n.length > 1 && !n.toLowerCase().includes('kasy'))
+            .map(n => n.startsWith('@') ? n : `@${n}`);
+          
+          if (names.length > 0) {
+            participants = ["@alice", ...names]; // Include payer + mentioned people
+          }
+        }
+        
         const assistantMessage: ChatMessage = {
           id: `msg-${Date.now()}-1`,
           role: "assistant",
-          content: `Parsed as ${parsed.description}, $${(parsed.amountCents / 100).toFixed(2)}, payer ${parsed.payer}, participants ${parsed.participants.join(", ")}.`,
+          content: `Parsed as ${pendingOCR.merchant}, $${(pendingOCR.totalCents / 100).toFixed(2)}, payer @alice, participants ${participants.join(", ")}.`,
           timestamp: new Date().toISOString(),
           actions: [
-            { type: "confirm_split", label: "Confirm & Split", data: parsed },
+            { 
+              type: "confirm_split", 
+              label: "Confirm & Split", 
+              data: {
+                description: pendingOCR.merchant,
+                amountCents: pendingOCR.totalCents,
+                currency: "USD",
+                payer: "@alice",
+                participants: participants,
+                merchant: pendingOCR.merchant,
+                confidence: pendingOCR.confidence
+              }
+            },
           ],
         };
         addChatMessage(assistantMessage);
+        
+        // Clear pending OCR after use
+        setPendingOCR(null);
       } else {
-        const errorMessage: ChatMessage = {
-          id: `msg-${Date.now()}-1`,
-          role: "assistant",
-          content: "I couldn't parse that expense. Try including an amount and participants like: 'Dinner $60 split with @bob @carol'",
-          timestamp: new Date().toISOString(),
-        };
-        addChatMessage(errorMessage);
+        // Normal NLP parsing (no pending OCR or no split keywords)
+        const parsed = await parseNaturalLanguage(input);
+        
+        if (parsed) {
+          const assistantMessage: ChatMessage = {
+            id: `msg-${Date.now()}-1`,
+            role: "assistant",
+            content: `Parsed as ${parsed.description}, $${(parsed.amountCents / 100).toFixed(2)}, payer ${parsed.payer}, participants ${parsed.participants.join(", ")}.`,
+            timestamp: new Date().toISOString(),
+            actions: [
+              { type: "confirm_split", label: "Confirm & Split", data: parsed },
+            ],
+          };
+          addChatMessage(assistantMessage);
+        } else {
+          const errorMessage: ChatMessage = {
+            id: `msg-${Date.now()}-1`,
+            role: "assistant",
+            content: "I couldn't parse that expense. Try including an amount and participants like: 'Dinner $60 split with @bob @carol'",
+            timestamp: new Date().toISOString(),
+          };
+          addChatMessage(errorMessage);
+        }
       }
     } catch (error) {
       toast.error("Failed to parse expense");
@@ -130,6 +192,14 @@ export default function Dashboard() {
           try {
             const ocrResult = await extractReceiptData(imageUrl, "user-1", "group-1");
             
+            // Store pending OCR result for follow-up messages (5-minute TTL)
+            setPendingOCR({
+              merchant: ocrResult.merchant || "Unknown",
+              totalCents: Math.round((ocrResult.total || 0) * 100),
+              confidence: ocrResult.confidence,
+              timestamp: Date.now()
+            });
+            
             const assistantMessage: ChatMessage = {
               id: `msg-${Date.now()}-ocr`,
               role: "assistant",
@@ -153,7 +223,7 @@ export default function Dashboard() {
             };
             addChatMessage(assistantMessage);
             
-            toast.success("Receipt processed successfully!");
+            toast.success("Receipt processed! You can now type 'split with @alice' to specify participants.");
           } catch (error) {
             console.error("Failed to process receipt:", error);
             toast.error("Failed to process receipt");
