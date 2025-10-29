@@ -191,25 +191,31 @@ export async function parseExpenseTextWithAI(text: string): Promise<{
   }
 }
 
-// Overlapping Splits Parsing (adapted from KASY_MVP lines 628-851)
+// Overlapping Splits Parsing (EXACT copy from KASY_MVP lines 629-808)
 export async function parseOverlappingSplits(
   text: string,
   totalCents: number
 ): Promise<{
   isOverlapping: boolean;
   splitGroups?: Array<{
-    name: string;
+    groupName: string;
     participants: string[];
+    participantNames: Record<string, string>;
     totalCents: number;
     perPersonCents: number;
   }>;
 }> {
-  // Detect overlapping patterns
+  // Detect overlapping patterns - FLEXIBLE pattern detection
   const hasHalvesPattern = (
+    // Pattern 1: "split into X halves/groups/ways"
     /split\s+(?:this|the|into)?\s*(?:into|in)?\s+(two|2|three|3)\s+(?:halves?|groups?|ways?)/i.test(text) ||
+    // Pattern 2: "divided/split in half"
     /(?:divided?|split)\s+in\s+half/i.test(text) ||
+    // Pattern 3: "half 1/2", "Half one/two", "first/second half/group"
     /(?:half|group)\s*(?:1|2|one|two|first|second|a|b)/i.test(text) ||
+    // Pattern 4: Abbreviated "h1", "h2"
     /\bh[12]\b/i.test(text) ||
+    // Pattern 5: Multiple instances of group/half indicators
     (text.match(/(?:half|group|h\d)/gi) || []).length >= 2
   );
 
@@ -222,10 +228,9 @@ export async function parseOverlappingSplits(
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are parsing an expense split into overlapping groups where participants may appear in multiple groups.
+      messages: [{
+        role: 'system',
+        content: `You are parsing an expense split into overlapping groups where participants may appear in multiple groups.
 
 CRITICAL: PRESERVE EXACT CAPITALIZATION of participant names as typed by user!
 - If user types "TOM", output "TOM" (not "tom")
@@ -255,13 +260,20 @@ Input: "Half 1: Boom Ken Jessi. Half 2: Boom Ann Gil"
 Output: {"groups": [{"name": "Half 1", "participants": ["Boom", "Ken", "Jessi"]}, {"name": "Half 2", "participants": ["Boom", "Ann", "Gil"]}]}
 
 Input: "first group was me sarah john, second group was me ann bob"
-Output: {"groups": [{"name": "first group", "participants": ["me", "sarah", "john"]}, {"name": "second group", "participants": ["me", "ann", "bob"]}]}`
-        },
-        {
-          role: 'user',
-          content: `Parse this overlapping split: "${text}"`
-        }
-      ],
+Output: {"groups": [{"name": "Group 1", "participants": ["me", "sarah", "john"]}, {"name": "Group 2", "participants": ["me", "ann", "bob"]}]}
+
+Input: "Group A: Alice Bob. Group B: Alice Carol"
+Output: {"groups": [{"name": "Group A", "participants": ["Alice", "Bob"]}, {"name": "Group B", "participants": ["Alice", "Carol"]}]}
+
+Input: "HALF 1: tom jerry. half 2: TOM ann"
+Output: {"groups": [{"name": "Half 1", "participants": ["tom", "jerry"]}, {"name": "Half 2", "participants": ["TOM", "ann"]}]}
+
+Input: "half one has: Boom Ken Jessi, and then half two has: Boom Ann Gil"
+Output: {"groups": [{"name": "Half 1", "participants": ["Boom", "Ken", "Jessi"]}, {"name": "Half 2", "participants": ["Boom", "Ann", "Gil"]}]}`
+      }, {
+        role: 'user',
+        content: `Parse the overlapping groups from: "${text}"`
+      }],
       response_format: { type: 'json_object' },
       temperature: 0.1
     });
@@ -272,28 +284,61 @@ Output: {"groups": [{"name": "first group", "participants": ["me", "sarah", "joh
     }
 
     const parsed = JSON.parse(content);
-    console.log('🔍 Parsed overlapping groups:', parsed);
+    console.log('🤖 OpenAI parsed overlapping groups:', JSON.stringify(parsed));
 
-    if (!parsed.groups || parsed.groups.length < 2) {
+    if (!parsed.groups || parsed.groups.length === 0) {
       return { isOverlapping: false };
     }
 
-    // Calculate per-group amounts
     const numGroups = parsed.groups.length;
-    const perGroupCents = Math.floor(totalCents / numGroups);
-    const remainder = totalCents - (perGroupCents * numGroups);
+    const amountPerGroup = Math.round(totalCents / numGroups);
 
-    const splitGroups = parsed.groups.map((group: any, index: number) => {
-      const groupTotalCents = perGroupCents + (index === 0 ? remainder : 0);
-      const perPersonCents = Math.floor(groupTotalCents / group.participants.length);
+    // CRITICAL: Create consistent IDs for the same person across all groups (case-insensitive)
+    // Step 1: Collect all unique participants (case-insensitive)
+    const uniqueParticipantsMap = new Map<string, string>(); // lowercase -> original display name
+    parsed.groups.forEach((group: any) => {
+      group.participants.forEach((name: string) => {
+        const nameLower = name.toLowerCase().trim();
+        if (!uniqueParticipantsMap.has(nameLower)) {
+          // Keep the first occurrence's capitalization as display name
+          uniqueParticipantsMap.set(nameLower, name.trim());
+        }
+      });
+    });
+
+    // Step 2: Create consistent userId for each unique person
+    const nameToUserId = new Map<string, string>(); // lowercase name -> userId
+    uniqueParticipantsMap.forEach((displayName, nameLower) => {
+      // Create synthetic ID based on lowercase name for consistency
+      const userId = `split_${nameLower.replace(/\s+/g, '_')}_${Date.now()}`;
+      nameToUserId.set(nameLower, userId);
+      console.log(`⚠️ Created synthetic ID for "${displayName}": ${userId}`);
+    });
+
+    // Step 3: Map groups using consistent IDs BUT preserve exact capitalization per group
+    const splitGroups = parsed.groups.map((group: any) => {
+      const participants: string[] = [];
+      const participantNames: Record<string, string> = {};
+
+      group.participants.forEach((name: string) => {
+        const nameLower = name.toLowerCase().trim();
+        const userId = nameToUserId.get(nameLower)!;
+        const displayName = name.trim(); // Use exact capitalization from this group
+
+        participants.push(userId);
+        participantNames[userId] = displayName;
+      });
 
       return {
-        name: group.name,
-        participants: group.participants,
-        totalCents: groupTotalCents,
-        perPersonCents
+        groupName: group.name,
+        participants,
+        participantNames,
+        totalCents: amountPerGroup,
+        perPersonCents: Math.round(amountPerGroup / participants.length)
       };
     });
+
+    console.log('✅ Parsed split groups:', JSON.stringify(splitGroups, null, 2));
 
     return {
       isOverlapping: true,
@@ -301,7 +346,7 @@ Output: {"groups": [{"name": "first group", "participants": ["me", "sarah", "joh
     };
 
   } catch (error) {
-    console.error('❌ Overlapping split parsing failed:', error);
+    console.log('❌ Overlapping split parsing failed:', error);
     return { isOverlapping: false };
   }
 }
