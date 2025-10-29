@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle preflight requests
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 // POST /api/expenses - Create expense
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +36,7 @@ export async function POST(request: NextRequest) {
     if (!groupId || !payerId || !description || !amountCents || !participants) {
       return NextResponse.json({ 
         error: 'Missing required fields' 
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
 
     console.log('💾 Creating expense:', description, amountCents);
@@ -128,7 +140,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       expense
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('❌ Failed to create expense:', error);
@@ -138,7 +150,7 @@ export async function POST(request: NextRequest) {
         error: 'Failed to create expense',
         details: error instanceof Error ? error.message : String(error)
       },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -167,13 +179,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       expenses
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('❌ Failed to get expenses:', error);
     return NextResponse.json(
       { error: 'Failed to get expenses' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
