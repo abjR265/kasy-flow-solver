@@ -39,6 +39,28 @@ export default function Dashboard() {
     }
   }, [showRealData]);
 
+  const handleClearDatabase = async () => {
+    if (!confirm('⚠️ Are you sure you want to delete ALL expenses from the database? This cannot be undone!')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/expenses?groupId=group-1`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setRealExpenses([]);
+        toast.success('Database cleared successfully!');
+      } else {
+        toast.error('Failed to clear database');
+      }
+    } catch (error) {
+      console.error('Failed to clear database:', error);
+      toast.error('Failed to clear database');
+    }
+  };
+
   const fetchRealExpenses = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/expenses?groupId=group-1`);
@@ -86,10 +108,21 @@ export default function Dashboard() {
                   : String(payerUsername);
                 const payerHandle = `@${payerDisplayName}`;
                 
+                // Include payer in participants if not already there
+                const allParticipants = [
+                  {
+                    id: exp.payerId || 'unknown',
+                    handle: payerHandle,
+                    displayName: payerDisplayName || 'User',
+                    avatarUrl: exp.payer?.avatarUrl || ''
+                  },
+                  ...participantObjects.filter((p: any) => p.id !== exp.payerId)
+                ];
+                
                 return {
                   id: exp.id || `exp-${Date.now()}`,
                   groupId: exp.groupId || 'default',
-                  merchant: exp.merchant || 'Unknown',
+                  merchant: exp.merchant || exp.description || 'Unknown', // Fallback to description!
                   description: exp.description || 'Expense',
                   amountCents: exp.amountCents || 0,
                   currency: exp.currency || 'USD',
@@ -99,7 +132,7 @@ export default function Dashboard() {
                     displayName: payerDisplayName || 'User', // Always a string!
                     avatarUrl: exp.payer?.avatarUrl || '' 
                   },
-                  participants: participantObjects, // Changed from participantHandles
+                  participants: allParticipants, // Include payer!
                   dateISO: exp.createdAt || new Date().toISOString(),
                   status: 'pending' as const,
                   receiptImageUrl: exp.receiptImageUrl || undefined
@@ -458,13 +491,24 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold">Recent Expenses</h2>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowRealData(!showRealData)}
-            >
-              {showRealData ? "📊 Show Mock Data" : "🔥 Show Real Data"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRealData(!showRealData)}
+              >
+                {showRealData ? "📊 Show Mock Data" : "🔥 Show Real Data"}
+              </Button>
+              {showRealData && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleClearDatabase}
+                >
+                  🗑️ Clear Database
+                </Button>
+              )}
+            </div>
           </div>
           <div className="grid gap-4">
             {(showRealData ? realExpenses : recentExpenses).map((expense) => (

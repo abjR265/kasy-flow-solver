@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
     if (!groupId) {
       return NextResponse.json({ 
         error: 'groupId is required' 
-      }, { status: 400 });
+      }, { status: 400, headers: corsHeaders });
     }
 
     const expenses = await prisma.expense.findMany({
@@ -185,6 +185,48 @@ export async function GET(request: NextRequest) {
     console.error('❌ Failed to get expenses:', error);
     return NextResponse.json(
       { error: 'Failed to get expenses' },
+      { status: 500, headers: corsHeaders }
+    );
+  }
+}
+
+// DELETE /api/expenses?groupId=xxx - Clear all expenses for a group
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const groupId = searchParams.get('groupId');
+
+    if (!groupId) {
+      return NextResponse.json({ 
+        error: 'groupId is required' 
+      }, { status: 400, headers: corsHeaders });
+    }
+
+    // Delete all payments first (foreign key constraint)
+    await prisma.payment.deleteMany({
+      where: {
+        expense: {
+          groupId
+        }
+      }
+    });
+
+    // Then delete all expenses
+    const result = await prisma.expense.deleteMany({
+      where: { groupId }
+    });
+
+    console.log(`🗑️ Deleted ${result.count} expenses from group ${groupId}`);
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: result.count
+    }, { headers: corsHeaders });
+
+  } catch (error) {
+    console.error('❌ Failed to clear expenses:', error);
+    return NextResponse.json(
+      { error: 'Failed to clear expenses' },
       { status: 500, headers: corsHeaders }
     );
   }
