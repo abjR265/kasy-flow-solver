@@ -125,8 +125,8 @@ export default function Dashboard() {
           const namesText = splitMatch[1];
           const names = namesText.split(/[\s,]+|and\b/i)
             .map(n => n.trim())
-            .filter(n => n.length > 1 && !n.toLowerCase().includes('kasy'))
-            .map(n => n.startsWith('@') ? n : `@${n}`);
+            .filter(n => typeof n === 'string' && n.length > 1 && !n.toLowerCase().includes('kasy'))
+            .map(n => (typeof n === 'string' && n.startsWith('@')) ? n : `@${n}`);
           
           if (names.length > 0) {
             participants = ["@alice", ...names]; // Include payer + mentioned people

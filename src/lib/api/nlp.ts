@@ -25,16 +25,24 @@ export async function parseNaturalLanguage(text: string): Promise<ParsedExpense 
 
     const parsed = data.parsed;
     
-    // Ensure participants have @ prefix
-    const participants = (parsed.beneficiaries || []).map((name: string) => 
-      name.startsWith('@') ? name : `@${name}`
-    );
+    // Ensure participants have @ prefix with type safety
+    const participants = (parsed.beneficiaries || [])
+      .filter((name: any) => typeof name === 'string' && name.length > 0)
+      .map((name: string) => 
+        (typeof name === 'string' && name.startsWith('@')) ? name : `@${name}`
+      );
+    
+    // Safe payer extraction with type check
+    const payerName = parsed.payer || '@alice';
+    const payer = (typeof payerName === 'string' && payerName.startsWith('@')) 
+      ? payerName 
+      : `@${payerName}`;
     
     return {
       description: parsed.description || 'Expense',
       amountCents: parsed.amount ? Math.round(parsed.amount * 100) : 0,
       currency: "USD",
-      payer: parsed.payer ? (parsed.payer.startsWith('@') ? parsed.payer : `@${parsed.payer}`) : "@alice",
+      payer: payer,
       participants: participants.length > 0 ? participants : ["@alice"],
       confidence: parsed.confidence || 0.5,
     };
