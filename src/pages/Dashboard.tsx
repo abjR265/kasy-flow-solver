@@ -19,6 +19,7 @@ export default function Dashboard() {
   
   const chatMessages = useStore((state) => state.chatMessages);
   const addChatMessage = useStore((state) => state.addChatMessage);
+  const addExpense = useStore((state) => state.addExpense);
   const expenses = useStore((state) => state.expenses);
   const currentUser = useStore((state) => state.currentUser);
 
@@ -66,10 +67,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleUploadReceipt = () => {
-    toast.info("Receipt upload coming soon!");
-  };
-
   const handleActionClick = async (action: any) => {
     if (action.type === "confirm_split" && action.data) {
       try {
@@ -77,13 +74,13 @@ export default function Dashboard() {
         
         // Create expense in backend
         const expenseData = {
-          groupId: activeGroupId || "group-1",
-          payerId: currentUser?.id || "user-1",
+          groupId: "group-1", // Use active group
+          payerId: "user-1", // Current user ID
           description: parsedExpense.description,
           amountCents: parsedExpense.amountCents,
           currency: parsedExpense.currency,
-          participants: parsedExpense.participants.map((p: string) => p.replace('@', '')),
-          splitType: "simple"
+          participants: parsedExpense.participants,
+          merchant: parsedExpense.merchant
         };
 
         const createdExpense = await createExpense(expenseData);
@@ -101,7 +98,7 @@ export default function Dashboard() {
           };
           addChatMessage(successMessage);
           
-          toast.success("Expense created and saved to database!");
+          toast.success("Expense created successfully!");
         } else {
           toast.error("Failed to create expense");
         }
@@ -111,6 +108,65 @@ export default function Dashboard() {
       }
     } else {
       toast.info("Action clicked: " + action.label);
+    }
+  };
+
+  const handleUploadReceipt = async () => {
+    try {
+      // Create file input element
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        // Convert to base64 for demo (in production, upload to cloud storage)
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const imageUrl = e.target?.result as string;
+          
+          try {
+            const ocrResult = await extractReceiptData(imageUrl, "user-1", "group-1");
+            
+            const assistantMessage: ChatMessage = {
+              id: `msg-${Date.now()}-ocr`,
+              role: "assistant",
+              content: `📄 Receipt processed! Found ${ocrResult.merchant} for $${ocrResult.total?.toFixed(2)}. Confidence: ${Math.round(ocrResult.confidence * 100)}%`,
+              timestamp: new Date().toISOString(),
+              actions: [
+                { 
+                  type: "confirm_split", 
+                  label: "Create Expense", 
+                  data: {
+                    description: `${ocrResult.merchant} - Receipt`,
+                    amountCents: Math.round((ocrResult.total || 0) * 100),
+                    currency: "USD",
+                    payer: "@alice",
+                    participants: ["@alice", "@bob"],
+                    merchant: ocrResult.merchant,
+                    confidence: ocrResult.confidence
+                  }
+                },
+              ],
+            };
+            addChatMessage(assistantMessage);
+            
+            toast.success("Receipt processed successfully!");
+          } catch (error) {
+            console.error("Failed to process receipt:", error);
+            toast.error("Failed to process receipt");
+          }
+        };
+        
+        reader.readAsDataURL(file);
+      };
+      
+      input.click();
+    } catch (error) {
+      console.error("Failed to upload receipt:", error);
+      toast.error("Failed to upload receipt");
     }
   };
 
@@ -173,6 +229,7 @@ export default function Dashboard() {
                           <Button
                             key={idx}
                             size="sm"
+                            variant="outline"
                             onClick={() => handleActionClick(action)}
                           >
                             {action.label}

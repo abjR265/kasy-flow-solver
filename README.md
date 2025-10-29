@@ -1,346 +1,293 @@
-# KASY - AI-Assisted Expense Coordinator
+# KASY Phase 1 - Complete Implementation
 
-KASY is a modern, AI-powered expense splitting and coordination platform with integrated Solana blockchain features. This is a **frontend-only implementation** with comprehensive mock data and services, ready for backend integration.
-
-## 🚀 Project Overview
-
-KASY enables groups to:
-- **Split expenses** using natural language or receipt OCR
-- **Process payments** via Venmo, PayPal, or Solana Pay
-- **Manage group vaults** with programmable autopay rules
-- **Mint NFT receipts** as on-chain proof of expenses
-- **Track reputation** with on-chain attestations and badges
-- **Earn yield** on vault balances via DeFi protocols
-
-## 📁 Complete File Structure
-
-```
-kasy/
-├── public/
-│   ├── robots.txt
-│   ├── favicon.ico
-│   └── placeholder.svg
-├── src/
-│   ├── components/
-│   │   ├── ui/              # shadcn/ui components
-│   │   │   ├── accordion.tsx
-│   │   │   ├── alert-dialog.tsx
-│   │   │   ├── alert.tsx
-│   │   │   ├── avatar.tsx
-│   │   │   ├── badge.tsx
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   ├── dropdown-menu.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── label.tsx
-│   │   │   ├── select.tsx
-│   │   │   ├── separator.tsx
-│   │   │   ├── switch.tsx
-│   │   │   ├── table.tsx
-│   │   │   ├── tabs.tsx
-│   │   │   ├── textarea.tsx
-│   │   │   ├── toast.tsx
-│   │   │   ├── toaster.tsx
-│   │   │   ├── tooltip.tsx
-│   │   │   └── use-toast.ts
-│   │   ├── ExpenseCard.tsx      # Reusable expense display
-│   │   ├── GroupSwitcher.tsx    # Group selection dropdown
-│   │   └── Layout.tsx           # Main app layout with navigation
-│   ├── hooks/
-│   │   ├── use-mobile.tsx
-│   │   └── use-toast.ts
-│   ├── lib/
-│   │   ├── api/                 # Mock API services (ready for backend)
-│   │   │   ├── nlp.ts          # Natural language expense parsing
-│   │   │   ├── ocr.ts          # Receipt OCR extraction
-│   │   │   ├── payments.ts     # Payment link generation
-│   │   │   ├── receipts.ts     # NFT minting & PDF export
-│   │   │   └── vaults.ts       # Vault operations & yield
-│   │   ├── fixtures/           # Mock data generators
-│   │   │   ├── expenses.ts     # Sample expenses
-│   │   │   ├── groups.ts       # Sample groups
-│   │   │   ├── payments.ts     # Sample payment requests
-│   │   │   ├── users.ts        # Sample users
-│   │   │   └── vaults.ts       # Sample vaults
-│   │   └── utils.ts            # Utility functions
-│   ├── pages/
-│   │   ├── Dashboard.tsx       # Chat interface for expense splitting
-│   │   ├── Payments.tsx        # Payment requests management
-│   │   ├── Vaults.tsx          # Group vault management
-│   │   ├── Receipts.tsx        # Expense ledger & NFT receipts
-│   │   ├── Reputation.tsx      # User reputation & badges
-│   │   ├── Dev.tsx             # Developer portal & SDK docs
-│   │   ├── Settings.tsx        # User settings & payment profiles
-│   │   └── NotFound.tsx        # 404 page
-│   ├── stores/
-│   │   └── useStore.ts         # Zustand global state management
-│   ├── types/
-│   │   └── index.ts            # TypeScript type definitions
-│   ├── App.tsx                 # Main app router
-│   ├── index.css               # Global styles & design tokens
-│   ├── main.tsx                # React entry point
-│   └── vite-env.d.ts
-├── index.html
-├── package.json
-├── tailwind.config.ts          # Tailwind configuration
-├── tsconfig.json
-├── vite.config.ts
-└── README.md
-```
-
-## 🎨 Design System
-
-### Color Palette (HSL-based)
-- **Primary**: Purple (`262 83% 58%`) - Main brand color
-- **Secondary**: Teal (`173 80% 40%`) - Accent color
-- **Gradients**: Purple-to-teal (`gradient-primary`, `gradient-text`)
-- **Dark Mode**: Default theme with deep backgrounds
-
-### Key Design Tokens
-```css
---primary: 262 83% 58%
---secondary: 173 80% 40%
---gradient-from: 262 83% 58%
---gradient-to: 173 80% 40%
-```
-
-### Tailwind Utilities
-- `.gradient-primary` - Purple-to-teal background gradient
-- `.gradient-text` - Gradient text effect
-- `.card-glow` - Elevated card with glow effect
+This repository contains the complete KASY Phase 1 implementation with both frontend and backend components.
 
 ## 🏗️ Architecture
 
-### State Management (Zustand)
-Global store manages:
-- **User**: Current user profile and authentication state
-- **Groups**: Group memberships and active group selection
-- **Expenses**: All expenses across groups
-- **Payments**: Payment requests and their statuses
-- **Vaults**: Group vaults with balances and rules
-- **Chat**: Conversation history for AI assistant
+```
+kasy-flow-solver/
+├── src/                    # Vite React Frontend
+│   ├── components/         # UI components
+│   ├── pages/             # Page components
+│   ├── lib/api/           # API services (now calls backend)
+│   ├── stores/            # Zustand state management
+│   └── types/             # TypeScript definitions
+├── backend/               # Next.js 14 Backend API
+│   ├── src/app/api/       # REST API endpoints
+│   ├── src/lib/           # Business logic utilities
+│   ├── prisma/            # Database schema
+│   └── vercel.json        # Cron job configuration
+└── README.md              # This file
+```
 
-### Mock API Layer
-All services in `src/lib/api/` return Promises with artificial delays to simulate network requests. Each function is marked with `// TODO(wire backend)` for easy identification of integration points.
+## 🚀 Features Implemented
 
-#### API Services
-1. **NLP Service** (`nlp.ts`)
-   - Parses natural language: "Dinner $60 split with @alice @bob"
-   - Returns structured expense data
+### 1. Smart OCR Receipt Processing
+- **Frontend**: File upload with base64 conversion
+- **Backend**: `POST /api/receipts/ocr` using GPT-4o Vision
+- **Extracts**: merchant, total, tax, tip, date, confidence score
+- **Stores**: pending receipt in DB (5-minute TTL)
 
-2. **OCR Service** (`ocr.ts`)
-   - Extracts data from receipt images
-   - Returns merchant, amount, date, participants
+### 2. Natural Language Parsing
+- **Frontend**: Chat interface with real-time parsing
+- **Backend**: `POST /api/expenses/parse` using GPT-4o-mini
+- **Parses**: "Dinner $60 split with @alice @bob"
+- **Returns**: amount, description, payer, participants, confidence
 
-3. **Payments Service** (`payments.ts`)
-   - Generates Venmo/PayPal deep links
-   - Creates Solana Pay URLs
-   - Processes payment confirmations
+### 3. Overlapping Splits Calculation
+- **Backend**: `POST /api/expenses/overlapping`
+- **Detects**: "split into two halves", "Half 1: ... Half 2: ..."
+- **Calculates**: per-group shares, overlapping user breakdown
+- **Preserves**: exact capitalization of names
 
-4. **Receipts Service** (`receipts.ts`)
-   - Mints compressed NFTs for expenses
-   - Exports expense history to PDF
+### 4. Gentle Collector Reminders (Cron)
+- **Backend**: `GET /api/cron/reminders` (hourly via Vercel Cron)
+- **Cadence**: T+24h, T+48h, T+7d
+- **Features**: quiet hours, snooze, opt-out
+- **Security**: CRON_SECRET authentication
 
-5. **Vaults Service** (`vaults.ts`)
-   - Manages deposits and withdrawals
-   - Handles autopay rule execution
-   - Suggests and applies yield strategies
+### 5. Gamification Badges (Monthly Reset)
+- **Backend**: `POST /api/badges/award`, `GET /api/badges/[userId]`
+- **Badges**: Table Hero, Pay It Forward, Even Steven
+- **Reset**: Monthly using month/year fields
+- **Triggers**: Payment completion events
 
-## 📱 Pages & Features
+### 6. Payment Integration
+- **Backend**: Payment endpoints with Venmo/PayPal deep links
+- **Links**: `venmo.com/{handle}?txn=pay&amount={amount}`
+- **Profiles**: Store Venmo/PayPal handles
+- **Status**: Track payment completion
 
-### 1. Dashboard (`/`)
-**Chat-based expense coordinator**
-- Natural language expense parsing
-- Receipt image upload with OCR
-- Inline split confirmation
-- Payment method selection (Venmo/PayPal/Solana)
-- Real-time expense status updates
+### 7. Delegation (Settlement Consolidation)
+- **Backend**: `GET /api/settlements/[groupId]`
+- **Algorithm**: Greedy optimization for minimal payments
+- **Filters**: Settlements < $0.01
+- **Tracks**: Already-paid settlements
 
-### 2. Payments (`/payments`)
-**Payment request management**
-- Summary of amounts due and owed
-- Payment method filtering
-- One-click payment links
-- Status tracking (unpaid/processing/paid)
-- Payment profile setup prompts
+### 8. DM Features (Personal Expense CRUD)
+- **Backend**: Full CRUD API for expenses
+- **Supports**: Simple splits, overlapping splits, custom shares
+- **Stores**: OCR data with expenses
+- **Soft Delete**: Audit trail preservation
 
-### 3. Vaults (`/vaults`)
-**Programmable group wallets**
-- Shared USDC balances
-- Autopay rules for recurring expenses
-- DeFi yield strategies (Kamino, Jito)
-- Transaction history
-- Member management
+### 9. PDF Export
+- **Backend**: `GET /api/exports/pdf/[groupId]`
+- **Includes**: expenses, balances, settlements
+- **Status**: Structured data returned (PDF generation TODO)
 
-### 4. Receipts (`/receipts`)
-**Expense ledger**
-- Chronological expense history
-- NFT receipt minting
-- On-chain transaction links
-- PDF export functionality
-- Filter by status and group
+### 10. Two-Message OCR Flow
+- **Backend**: Pending receipt endpoints with DB storage
+- **Features**: DB-backed pending receipts, 5-minute TTL
+- **Supports**: Follow-up split instructions, amount editing
 
-### 5. Reputation (`/reputation`)
-**Social credit system**
-- Reputation score (0-100)
-- Achievement badges
-- On-chain payment attestations
-- Payment history statistics
+## 🛠️ Tech Stack
 
-### 6. Dev Portal (`/dev`)
-**Developer resources**
-- SDK documentation
-- REST API endpoints
-- Webhook event samples
-- API key management
-- Code examples
+### Frontend (Vite + React)
+- **React 18** with TypeScript
+- **Vite** for build tooling
+- **Tailwind CSS** + shadcn/ui components
+- **Zustand** for state management
+- **React Router** for navigation
 
-### 7. Settings (`/settings`)
-**User configuration**
-- Profile management
-- Payment method setup (Venmo, PayPal)
-- Wallet connection (Phantom)
-- Notification preferences
-- Gentle collector settings
-
-## 🔧 Technologies
-
-### Core Stack
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **shadcn/ui** - Component library
-
-### Key Libraries
-- **react-router-dom** - Client-side routing
-- **zustand** - State management
-- **@tanstack/react-query** - Server state management (ready for backend)
-- **lucide-react** - Icons
-- **date-fns** - Date utilities
-- **sonner** - Toast notifications
-
-### Planned Integrations
-- **@solana/wallet-adapter-react** - Phantom wallet connection
-- **@solana/web3.js** - Solana blockchain interactions
+### Backend (Next.js 14)
+- **Next.js 14** with App Router
+- **Prisma ORM** + Supabase PostgreSQL
+- **OpenAI** (GPT-4o Vision + GPT-4o-mini)
+- **Vercel** deployment with Cron Jobs
 
 ## 🚦 Getting Started
 
 ### Prerequisites
-- Node.js 18+ and npm
+- Node.js 18+
+- PostgreSQL database (Supabase recommended)
+- OpenAI API key
 
-### Installation
+### 1. Setup Backend
+
 ```bash
-# Clone the repository
-git clone <YOUR_GIT_URL>
-
-# Navigate to project
-cd kasy
+cd backend
 
 # Install dependencies
 npm install
+
+# Setup environment
+cp env.example .env.local
+# Edit .env.local with your values:
+# - DATABASE_URL (Supabase PostgreSQL)
+# - OPENAI_API_KEY
+# - CRON_SECRET
+
+# Setup database
+npm run db:push
+npm run db:generate
 
 # Start development server
 npm run dev
 ```
 
-### Development
-The app runs at `http://localhost:5173` with hot module replacement.
+### 2. Setup Frontend
 
-## 🧪 Mock Data
+```bash
+# In project root
+cd ..
 
-All mock data is located in `src/lib/fixtures/`:
-- **4 users**: Alice, Bob, Carol, Angela (with varying rep scores)
-- **2 groups**: "Room 4A" (roommates), "Sushi Night Oct 25 2025"
-- **5 expenses**: Mix of USD/USDC, various statuses
-- **3 payment requests**: Different payment methods
-- **1 vault**: With balance, autopay rules, and yield strategy
+# Install dependencies
+npm install
 
-## 🔌 Backend Integration Guide
+# Setup environment
+cp env.example .env.local
+# Edit .env.local:
+# VITE_API_BASE_URL=http://localhost:3000
 
-### Integration Points (marked with `// TODO(wire backend)`)
+# Start development server
+npm run dev
+```
 
-1. **Authentication**
-   - Replace mock user in `useStore` with real auth
-   - Connect to Supabase Auth or custom solution
+### 3. Test the Integration
 
-2. **Database**
-   - Replace Zustand fixtures with API calls
-   - Implement CRUD operations for expenses, payments, vaults
-   - Add real-time subscriptions
+1. **Frontend**: Visit `http://localhost:5173`
+2. **Backend**: API available at `http://localhost:3000`
+3. **Test NLP**: Type "Dinner $60 split with @alice @bob"
+4. **Test OCR**: Upload a receipt image
+5. **Test Creation**: Click "Confirm & Split" to create expense
 
-3. **AI Services**
-   - Wire NLP service to OpenAI/Anthropic
-   - Connect OCR to AWS Textract or Google Vision
+## 📊 Database Schema
 
-4. **Blockchain**
-   - Implement Solana Pay URL generation
-   - Add wallet signing for transactions
-   - Connect to Metaplex for compressed NFT minting
-   - Integrate DeFi protocols (Kamino, Jito)
+The backend uses a comprehensive Prisma schema with:
 
-5. **Payment Processing**
-   - Add webhook handlers for Venmo/PayPal
-   - Implement payment verification
+- **users** - User profiles with auth, payment methods, rep score
+- **groups** - Group memberships with vault associations
+- **expenses** - Expense records with split logic (simple + overlapping)
+- **payments** - Payment requests/settlements with status tracking
+- **vaults** - Group shared wallets with USDC balances, autopay rules
+- **badges** - Monthly-reset achievement system
+- **attestations** - On-chain reputation events
+- **reminders** - Gentle Collector™ reminder queue
+- **user_preferences** - Reminder settings, quiet hours, timezone
+- **pending_receipts** - Two-message OCR flow storage
 
-6. **Notifications**
-   - Set up email/SMS for payment reminders
-   - Implement "Gentle Collector" scheduling
+## 🔧 API Endpoints
 
-## 📊 Type System
+### Receipts
+- `POST /api/receipts/ocr` - Process receipt image
+- `POST /api/receipts/pending/[userId]` - Store pending receipt
+- `POST /api/receipts/confirm` - Confirm pending receipt
 
-Complete TypeScript definitions in `src/types/index.ts`:
-- `User` - User profiles with payment methods
-- `Group` - Group memberships
-- `Expense` - Expense records with participants
-- `PaymentRequest` - Payment obligations
-- `Vault` - Shared wallet with rules
-- `AutoPayRule` - Recurring payment automation
-- `YieldStrategy` - DeFi yield configuration
-- `Badge` - Achievement system
-- `Attestation` - On-chain reputation records
+### Expenses
+- `POST /api/expenses/parse` - Parse natural language
+- `POST /api/expenses/overlapping` - Calculate overlapping splits
+- `POST /api/expenses` - Create expense
+- `GET /api/expenses?groupId=xxx` - List group expenses
+- `PUT /api/expenses/[id]` - Update expense
+- `DELETE /api/expenses/[id]` - Delete expense
 
-## 🎯 Key Features Implemented
+### Payments
+- `POST /api/payments/create` - Create payment request
+- `POST /api/payments/mark-paid` - Mark payment as paid
+- `GET /api/payments/profile/[userId]` - Get payment profile
+- `PUT /api/payments/profile/[userId]` - Update payment profile
 
-✅ Natural language expense parsing  
-✅ Receipt OCR extraction  
-✅ Multi-currency support (USD/USDC)  
-✅ Three payment methods (Venmo/PayPal/Solana)  
-✅ Group vault management  
-✅ Autopay rules for recurring expenses  
-✅ DeFi yield suggestions  
-✅ Compressed NFT receipt minting  
-✅ Reputation scoring with badges  
-✅ Developer SDK documentation  
-✅ Responsive dark mode design  
+### Settlements
+- `GET /api/settlements/[groupId]` - Get optimized settlements
 
-## 🔮 Future Enhancements
+### Badges
+- `POST /api/badges/award` - Award badge
+- `GET /api/badges/[userId]` - Get user badges
 
-- Real-time collaboration
-- Multi-group expense splitting
-- Currency conversion
-- Expense categories and budgets
-- Export to accounting software
-- Mobile app (React Native)
-- Telegram/Discord bot integration
+### Exports
+- `GET /api/exports/pdf/[groupId]` - Generate PDF export
 
-## 📝 Project Info
+### Cron
+- `GET /api/cron/reminders` - Process due reminders (hourly)
 
-**Lovable Project URL**: https://lovable.dev/projects/208fa893-fd10-4acd-ae31-6ef84f3ecfdf
+## 🔑 Environment Variables
+
+### Backend (.env.local)
+```bash
+DATABASE_URL="postgresql://username:password@localhost:5432/kasy_db"
+DIRECT_DATABASE_URL="postgresql://username:password@localhost:5432/kasy_db"
+OPENAI_API_KEY="sk-your-openai-api-key"
+CRON_SECRET="your-cron-secret-key"
+NEXTAUTH_SECRET="your-nextauth-secret"
+NEXT_PUBLIC_FRONTEND_URL="http://localhost:5173"
+```
+
+### Frontend (.env.local)
+```bash
+VITE_API_BASE_URL="http://localhost:3000"
+```
+
+## 🚀 Deployment
+
+### Backend (Vercel)
+1. Connect GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main
+
+### Frontend (Vercel/Netlify)
+1. Build command: `npm run build`
+2. Output directory: `dist`
+3. Set `VITE_API_BASE_URL` to your deployed backend URL
+
+## 🧪 Testing
+
+### Manual Testing
+1. **NLP Parsing**: Test various expense formats
+2. **OCR Processing**: Upload different receipt types
+3. **Overlapping Splits**: Test complex split scenarios
+4. **Payment Links**: Verify Venmo/PayPal link generation
+5. **Badge System**: Test badge awarding logic
+6. **Cron Jobs**: Test reminder processing
+
+### API Testing
+```bash
+# Test NLP parsing
+curl -X POST http://localhost:3000/api/expenses/parse \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Dinner $60 split with @alice @bob"}'
+
+# Test OCR processing
+curl -X POST http://localhost:3000/api/receipts/ocr \
+  -H "Content-Type: application/json" \
+  -d '{"imageUrl": "https://example.com/receipt.jpg", "userId": "user123"}'
+
+# Test settlements
+curl http://localhost:3000/api/settlements/group456
+```
+
+## 🔄 Business Logic
+
+All business logic is adapted from the working KASY_MVP Telegram bot:
+
+- **OpenAI Integration**: Exact same prompts for consistency
+- **Database Operations**: Retry logic for prepared statement conflicts
+- **Badge System**: Monthly reset using month/year fields
+- **Settlement Algorithm**: Greedy optimization for minimal payments
+- **Overlapping Splits**: Preserves exact capitalization
+- **Gentle Collector**: Same cadence and templates
+
+## 📈 Next Steps
+
+1. **Authentication**: Implement user authentication flow
+2. **Real-time Updates**: Add WebSocket connections
+3. **PDF Generation**: Complete PDF export using @react-pdf/renderer
+4. **Email Notifications**: Replace console.log with actual email sending
+5. **Mobile App**: React Native implementation
+6. **Blockchain Integration**: Solana Pay, NFT receipts
+7. **Advanced Analytics**: Expense insights and reporting
 
 ## 🤝 Contributing
 
-This is a Lovable-generated project. Changes can be made via:
-1. **Lovable Editor** - Prompt-based development
-2. **Local IDE** - Clone and push changes
-3. **GitHub Codespaces** - Cloud development environment
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## 📄 License
 
-This project is part of the Lovable platform.
+This project is part of the KASY platform development.
 
 ---
 
-**Built with ❤️ using [Lovable](https://lovable.dev)**
-# Trigger deployment from main branch
+**Built with ❤️ for seamless expense splitting**

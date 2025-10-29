@@ -37,7 +37,7 @@ export async function parseNaturalLanguage(text: string): Promise<ParsedExpense 
     console.error('Failed to parse natural language:', error);
     
     // Fallback to simple pattern matching
-    const amountMatch = text.match(/\$?(\d+(?:\.\d{2})?)/);
+    const amountMatch = text.match(/\$(\d+(?:\.\d{2})?)/);
     const mentionMatches = text.match(/@\w+/g);
     
     if (!amountMatch) return null;
@@ -47,7 +47,7 @@ export async function parseNaturalLanguage(text: string): Promise<ParsedExpense 
 
     // Extract description
     let description = text
-      .replace(/\$?\d+(?:\.\d{2})?/, '')
+      .replace(/\$\d+(?:\.\d{2})?/, '')
       .replace(/@\w+/g, '')
       .replace(/\b(split|with|for|at)\b/gi, '')
       .trim();
