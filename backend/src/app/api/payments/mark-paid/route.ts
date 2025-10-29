@@ -46,10 +46,8 @@ export async function POST(request: NextRequest) {
 
       // Check Pay It Forward badge for debtor
       await checkPayItForwardBadge(
-        payment.expense.groupId,
         payment.fromUserId,
-        new Date().toISOString(),
-        payment.expense.createdAt.toISOString()
+        payment.expense.groupId
       );
     }
 

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
             totalCents: 0
           };
         }
-        overlappingUsers[participant].groups.push(group.name);
+        overlappingUsers[participant].groups.push(group.groupName);
         overlappingUsers[participant].totalCents += group.perPersonCents;
       }
     }
