@@ -45,19 +45,34 @@ export default function Dashboard() {
         const data = await response.json();
         if (data.success && data.expenses) {
           // Transform backend expenses to match frontend Expense type
-          const transformedExpenses = data.expenses.map((exp: any) => ({
-            id: exp.id,
-            groupId: exp.groupId,
-            merchant: exp.merchant || 'Unknown',
-            description: exp.description,
-            amountCents: exp.totalCents,
-            currency: exp.currency || 'USD',
-            payer: { id: exp.payerId, handle: `@${exp.payer?.username || 'user'}`, displayName: exp.payer?.username || 'User', avatarUrl: '' },
-            participants: [], // Would need to fetch from relations
-            dateISO: exp.createdAt,
-            status: 'pending' as const,
-            receiptImageUrl: exp.receiptImageUrl
-          }));
+          const transformedExpenses = data.expenses.map((exp: any) => {
+            console.log('Backend expense:', exp);
+            
+            // Get participant info from payments or use participants array
+            const participantHandles = exp.participants?.map((userId: string) => {
+              const name = exp.participantNames?.[userId] || userId;
+              return name.startsWith('@') ? name : `@${name}`;
+            }) || [];
+            
+            return {
+              id: exp.id,
+              groupId: exp.groupId,
+              merchant: exp.merchant || 'Unknown',
+              description: exp.description,
+              amountCents: exp.amountCents, // Correct field name!
+              currency: exp.currency || 'USD',
+              payer: { 
+                id: exp.payerId, 
+                handle: `@${exp.payer?.username || 'user'}`, 
+                displayName: exp.payer?.displayName || exp.payer?.username || 'User', 
+                avatarUrl: exp.payer?.avatarUrl || '' 
+              },
+              participants: participantHandles,
+              dateISO: exp.createdAt,
+              status: 'pending' as const,
+              receiptImageUrl: exp.receiptImageUrl
+            };
+          });
           setRealExpenses(transformedExpenses);
         }
       }
