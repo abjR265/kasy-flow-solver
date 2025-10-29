@@ -15,6 +15,7 @@ type Store = {
   groups: Group[];
   activeGroupId: string | null;
   setActiveGroupId: (id: string) => void;
+  addGroup: (group: Group) => void;
 
   // Expenses
   expenses: Expense[];
@@ -44,6 +45,8 @@ export const useStore = create<Store>((set) => ({
   groups: mockGroups,
   activeGroupId: mockGroups[0]?.id || null,
   setActiveGroupId: (id) => set({ activeGroupId: id }),
+  addGroup: (group) =>
+    set((state) => ({ groups: [...state.groups, group] })),
 
   // Expenses
   expenses: mockExpenses,
