@@ -25,12 +25,17 @@ export async function parseNaturalLanguage(text: string): Promise<ParsedExpense 
 
     const parsed = data.parsed;
     
+    // Ensure participants have @ prefix
+    const participants = (parsed.beneficiaries || []).map((name: string) => 
+      name.startsWith('@') ? name : `@${name}`
+    );
+    
     return {
       description: parsed.description || 'Expense',
       amountCents: parsed.amount ? Math.round(parsed.amount * 100) : 0,
       currency: "USD",
-      payer: parsed.payer || "@alice", // Current user
-      participants: parsed.beneficiaries || ["@alice"],
+      payer: parsed.payer ? (parsed.payer.startsWith('@') ? parsed.payer : `@${parsed.payer}`) : "@alice",
+      participants: participants.length > 0 ? participants : ["@alice"],
       confidence: parsed.confidence || 0.5,
     };
   } catch (error) {
