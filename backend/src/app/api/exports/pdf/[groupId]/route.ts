@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { calculateBalances, calculateSettlements } from '@/lib/calculations';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // GET /api/exports/pdf/[groupId] - Generate PDF export
 export async function GET(
@@ -49,48 +51,111 @@ export async function GET(
     const balances = await calculateBalances(groupId);
     const settlements = await calculateSettlements(balances, groupId);
 
-    // Generate PDF content (simplified for now)
-    const pdfContent = {
-      group: {
-        name: group.name,
-        description: group.description,
-        memberCount: group.members.length
-      },
-      expenses: expenses.map((expense: any) => ({
-        id: expense.id,
-        description: expense.description,
-        merchant: expense.merchant,
-        amount: expense.amountCents / 100,
-        currency: expense.currency,
-        payer: expense.payer.displayName,
-        participants: expense.participants.length,
-        createdAt: expense.createdAt,
-        status: expense.status
-      })),
-      balances: balances.map(balance => ({
-        userName: balance.userName,
-        balance: balance.balance / 100
-      })),
-      settlements: settlements.map(settlement => ({
-        from: settlement.fromName,
-        to: settlement.toName,
-        amount: settlement.amountCents / 100,
-        isPaid: settlement.isPaid
-      })),
-      summary: {
-        totalExpenses: expenses.length,
-        totalAmount: expenses.reduce((sum: number, exp: any) => sum + exp.amountCents, 0) / 100,
-        unpaidSettlements: settlements.filter((s: any) => !s.isPaid).length,
-        totalUnpaid: settlements.filter((s: any) => !s.isPaid).reduce((sum: number, s: any) => sum + s.amountCents, 0) / 100
-      }
-    };
+    // Generate PDF
+    const doc = new jsPDF();
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
 
-    // For now, return JSON data instead of actual PDF
-    // TODO: Implement actual PDF generation using @react-pdf/renderer
-    return NextResponse.json({
-      success: true,
-      pdfData: pdfContent,
-      message: 'PDF generation not yet implemented - returning structured data'
+    // Title
+    doc.setFontSize(20);
+    doc.text('KASY - Expense Report', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.text(`Group: ${group.name}`, 20, 35);
+    doc.text(`Generated: ${dateStr}`, 20, 42);
+    doc.text(`Members: ${group.members.length}`, 20, 49);
+
+    // Summary Section
+    const totalAmount = expenses.reduce((sum: number, exp: any) => sum + exp.amountCents, 0) / 100;
+    const unpaidSettlements = settlements.filter((s: any) => !s.isPaid);
+    const totalUnpaid = unpaidSettlements.reduce((sum: number, s: any) => sum + s.amountCents, 0) / 100;
+
+    doc.setFontSize(14);
+    doc.text('Summary', 20, 62);
+    doc.setFontSize(10);
+    doc.text(`Total Expenses: ${expenses.length}`, 20, 70);
+    doc.text(`Total Amount: $${totalAmount.toFixed(2)}`, 20, 76);
+    doc.text(`Pending Settlements: ${unpaidSettlements.length}`, 20, 82);
+    doc.text(`Pending Amount: $${totalUnpaid.toFixed(2)}`, 20, 88);
+
+    // Expenses Table
+    autoTable(doc, {
+      startY: 98,
+      head: [['Date', 'Description', 'Payer', 'Amount', 'Status']],
+      body: expenses.map((exp: any) => [
+        new Date(exp.createdAt).toLocaleDateString(),
+        exp.description || exp.merchant || 'Expense',
+        exp.payer?.displayName || 'Unknown',
+        `$${(exp.amountCents / 100).toFixed(2)}`,
+        exp.status
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [59, 130, 246] },
+      styles: { fontSize: 9 }
+    });
+
+    // Balances Table
+    const finalY = (doc as any).lastAutoTable.finalY || 98;
+    doc.setFontSize(14);
+    doc.text('Current Balances', 20, finalY + 15);
+    
+    autoTable(doc, {
+      startY: finalY + 20,
+      head: [['Member', 'Balance']],
+      body: balances.map(balance => [
+        balance.userName,
+        balance.balance >= 0 
+          ? `+$${(balance.balance / 100).toFixed(2)}` 
+          : `-$${(Math.abs(balance.balance) / 100).toFixed(2)}`
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [59, 130, 246] },
+      styles: { fontSize: 9 }
+    });
+
+    // Settlements Table
+    const balancesY = (doc as any).lastAutoTable.finalY || finalY + 20;
+    doc.setFontSize(14);
+    doc.text('Suggested Settlements', 20, balancesY + 15);
+    
+    autoTable(doc, {
+      startY: balancesY + 20,
+      head: [['From', 'To', 'Amount', 'Status']],
+      body: settlements.map((s: any) => [
+        s.fromName,
+        s.toName,
+        `$${(s.amountCents / 100).toFixed(2)}`,
+        s.isPaid ? 'Paid' : 'Pending'
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [59, 130, 246] },
+      styles: { fontSize: 9 }
+    });
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    doc.setFontSize(8);
+    doc.text(
+      `Generated by KASY - Page ${pageCount}`,
+      105,
+      doc.internal.pageSize.height - 10,
+      { align: 'center' }
+    );
+
+    // Return PDF as buffer
+    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+    const filename = `kasy-${group.name.toLowerCase().replace(/\s+/g, '-')}-${now.toISOString().split('T')[0]}.pdf`;
+
+    return new NextResponse(pdfBuffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': pdfBuffer.length.toString()
+      }
     });
 
   } catch (error) {
