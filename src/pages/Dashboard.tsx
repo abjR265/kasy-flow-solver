@@ -14,6 +14,7 @@ import { ExpenseCard } from "@/components/ExpenseCard";
 import { toast } from "sonner";
 
 export default function Dashboard() {
+  // VERSION: 2024-10-29-fix-v5 - Force cache bust
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [realExpenses, setRealExpenses] = useState<any[]>([]);
@@ -62,21 +63,28 @@ export default function Dashboard() {
               try {
                 console.log('🔄 Transforming expense:', exp.id);
                 
-                // Get participant info from payments or use participants array
-                const participantHandles = Array.isArray(exp.participants) 
+                // Get participant info - ExpenseCard expects objects with id, displayName, avatarUrl
+                const participantObjects = Array.isArray(exp.participants) 
                   ? exp.participants
                       .filter((userId: any) => userId && typeof userId === 'string')
                       .map((userId: string) => {
                         const name = exp.participantNames?.[userId] || userId;
-                        return (typeof name === 'string' && name.startsWith('@')) ? name : `@${name}`;
+                        const displayName = (typeof name === 'string' && name.startsWith('@')) ? name.slice(1) : String(name);
+                        return {
+                          id: userId,
+                          handle: `@${displayName}`,
+                          displayName: displayName || 'User',
+                          avatarUrl: ''
+                        };
                       }) 
                   : [];
                 
-                // Safe payer info extraction
+                // Safe payer info extraction - ExpenseCard expects object with displayName
                 const payerUsername = exp.payer?.username || exp.payer?.displayName || 'User';
-                const payerHandle = (typeof payerUsername === 'string' && payerUsername.startsWith('@')) 
-                  ? payerUsername 
-                  : `@${payerUsername}`;
+                const payerDisplayName = (typeof payerUsername === 'string' && payerUsername.startsWith('@')) 
+                  ? payerUsername.slice(1) 
+                  : String(payerUsername);
+                const payerHandle = `@${payerDisplayName}`;
                 
                 return {
                   id: exp.id || `exp-${Date.now()}`,
@@ -88,10 +96,10 @@ export default function Dashboard() {
                   payer: { 
                     id: exp.payerId || 'unknown', 
                     handle: payerHandle, 
-                    displayName: exp.payer?.displayName || exp.payer?.username || 'User', 
+                    displayName: payerDisplayName || 'User', // Always a string!
                     avatarUrl: exp.payer?.avatarUrl || '' 
                   },
-                  participants: participantHandles,
+                  participants: participantObjects, // Changed from participantHandles
                   dateISO: exp.createdAt || new Date().toISOString(),
                   status: 'pending' as const,
                   receiptImageUrl: exp.receiptImageUrl || undefined
