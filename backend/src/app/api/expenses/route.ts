@@ -132,8 +132,12 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('❌ Failed to create expense:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
     return NextResponse.json(
-      { error: 'Failed to create expense' },
+      { 
+        error: 'Failed to create expense',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
