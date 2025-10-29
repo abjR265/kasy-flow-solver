@@ -46,14 +46,15 @@ export default function Dashboard() {
 
     try {
       console.log('🗑️ Clearing database...');
-      const url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/expenses?groupId=group-1`;
-      console.log('DELETE request to:', url);
+      const url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/expenses/clear`;
+      console.log('POST request to:', url);
       
       const response = await fetch(url, {
-        method: 'DELETE',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ groupId: 'group-1' })
       });
 
       console.log('Response status:', response.status);
