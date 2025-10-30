@@ -158,43 +158,28 @@ export async function parseExpenseTextWithAI(text: string): Promise<{
       messages: [
         {
           role: 'system',
-          content: `You are an expense parser that extracts structured data from natural language.
+          content: `Extract expense information from text. Return JSON with: amount, description, participants.
 
-**CRITICAL RULE #1**: For "description", extract EVERYTHING before the amount/number. Keep ALL words and context.
-**CRITICAL RULE #2**: NEVER reduce multi-word descriptions to single words.
+CRITICAL: For "description", copy ALL text that comes BEFORE the dollar amount. Do NOT summarize or shorten it.
 
-STEP-BY-STEP:
-1. Find the amount/number (look for $ or standalone numbers)
-2. Everything BEFORE the amount is the description - KEEP IT ALL
-3. Extract participant names after "with" or "split with" (remove @ symbol)
+Examples:
 
-EXAMPLES (PAY ATTENTION TO DESCRIPTIONS):
+"korean restaurant at 11/3 $200 split with josh ken alex"
+→ {"amount": 200, "description": "korean restaurant at 11/3", "participants": ["josh", "ken", "alex"]}
 
-Input: "korean dinner 100 with @jack @jill"
-→ Output: {"amount": 100, "description": "korean dinner", "participants": ["jack", "jill"]}
+"korean dinner 100 with @jack @jill"
+→ {"amount": 100, "description": "korean dinner", "participants": ["jack", "jill"]}
 
-Input: "coffee at starbucks 5.50"
-→ Output: {"amount": 5.50, "description": "coffee at starbucks", "participants": []}
+"coffee at starbucks 5.50"
+→ {"amount": 5.50, "description": "coffee at starbucks", "participants": []}
 
-Input: "team lunch meeting $80 split with @bob @carol"
-→ Output: {"amount": 80, "description": "team lunch meeting", "participants": ["bob", "carol"]}
+"italian dinner 120"
+→ {"amount": 120, "description": "italian dinner", "participants": []}
 
-Input: "italian dinner 120"
-→ Output: {"amount": 120, "description": "italian dinner", "participants": []}
+"dinner 3/2"
+→ {"amount": 0, "description": "dinner 3/2", "participants": []}
 
-Input: "groceries for the house 150 with @alice"
-→ Output: {"amount": 150, "description": "groceries for the house", "participants": ["alice"]}
-
-Input: "dinner 3/2" 
-→ Output: {"amount": 0, "description": "dinner 3/2", "participants": []}
-
-❌ WRONG: "korean dinner" → "dinner" (missing "korean")
-✅ RIGHT: "korean dinner" → "korean dinner" (complete)
-
-Return JSON with:
-- amount: number (dollar amount, or 0 if not found)
-- description: string (COMPLETE description before the amount)
-- participants: array of strings (names without @ symbol)`
+The description must include ALL words before the amount: adjectives, locations, dates, everything.`
         },
         {
           role: 'user',
