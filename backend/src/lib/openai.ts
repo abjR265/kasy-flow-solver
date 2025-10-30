@@ -154,7 +154,7 @@ export async function parseExpenseTextWithAI(text: string): Promise<{
     console.log('🤖 Parsing expense text with AI:', text);
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',
