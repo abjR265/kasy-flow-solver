@@ -158,7 +158,27 @@ export async function parseExpenseTextWithAI(text: string): Promise<{
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant that extracts expense information from text. Extract: 1) amount (number), 2) description - preserve the FULL context from the user (e.g., "korean dinner", "coffee at starbucks", "lunch meeting"), 3) participants mentioned (names after "split with" or "with"). Return JSON with: amount (number), description (string - keep full description), participants (array of name strings, empty if none mentioned).'
+          content: `You are an expense parser. Extract information from natural language expense descriptions.
+
+CRITICAL: For the description field, preserve ALL descriptive words from the user's input. DO NOT shorten or simplify.
+
+EXAMPLES:
+- Input: "korean dinner 100 with @jack @jill"
+  Output: {"amount": 100, "description": "korean dinner", "participants": ["jack", "jill"]}
+
+- Input: "coffee at starbucks 5.50"
+  Output: {"amount": 5.50, "description": "coffee at starbucks", "participants": []}
+
+- Input: "team lunch meeting 80 split with @bob @carol"
+  Output: {"amount": 80, "description": "team lunch meeting", "participants": ["bob", "carol"]}
+
+- Input: "italian dinner 120"
+  Output: {"amount": 120, "description": "italian dinner", "participants": []}
+
+Return JSON with:
+- amount: number (the dollar amount)
+- description: string (FULL description with ALL adjectives/context)
+- participants: array of strings (names after "with" or "split with", without @ symbol)`
         },
         {
           role: 'user',
@@ -166,7 +186,7 @@ export async function parseExpenseTextWithAI(text: string): Promise<{
         }
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.1
+      temperature: 0.0
     });
 
     const content = response.choices[0]?.message?.content;
