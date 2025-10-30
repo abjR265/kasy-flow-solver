@@ -158,7 +158,7 @@ export async function parseExpenseTextWithAI(text: string): Promise<{
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant that extracts expense information from text. Extract: 1) amount (number), 2) SHORT 1-2 word description (e.g., "lunch", "coffee", "dinner"), 3) participants mentioned (names after "split with" or "with"). Return JSON with: amount (number), description (string), participants (array of name strings, empty if none mentioned).'
+          content: 'You are a helpful assistant that extracts expense information from text. Extract: 1) amount (number), 2) description - preserve the FULL context from the user (e.g., "korean dinner", "coffee at starbucks", "lunch meeting"), 3) participants mentioned (names after "split with" or "with"). Return JSON with: amount (number), description (string - keep full description), participants (array of name strings, empty if none mentioned).'
         },
         {
           role: 'user',
