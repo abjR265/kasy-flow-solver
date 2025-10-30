@@ -105,7 +105,8 @@ export default function Dashboard() {
                       .filter((userId: any) => userId && typeof userId === 'string')
                       .map((userId: string) => {
                         const name = exp.participantNames?.[userId] || userId;
-                        const displayName = (typeof name === 'string' && name.startsWith('@')) ? name.slice(1) : String(name);
+                        const nameStr = String(name || 'User'); // Ensure string
+                        const displayName = nameStr.startsWith('@') ? nameStr.slice(1) : nameStr;
                         return {
                           id: userId,
                           handle: `@${displayName}`,
@@ -116,10 +117,11 @@ export default function Dashboard() {
                   : [];
                 
                 // Safe payer info extraction - ExpenseCard expects object with displayName
-                const payerUsername = exp.payer?.username || exp.payer?.displayName || 'User';
-                const payerDisplayName = (typeof payerUsername === 'string' && payerUsername.startsWith('@')) 
-                  ? payerUsername.slice(1) 
-                  : String(payerUsername);
+                const payerUsername = exp.payer?.displayName || exp.payerId || 'User';
+                const payerUsernameStr = String(payerUsername || 'User'); // Ensure string
+                const payerDisplayName = (payerUsernameStr.startsWith('@')) 
+                  ? payerUsernameStr.slice(1) 
+                  : payerUsernameStr;
                 const payerHandle = `@${payerDisplayName}`;
                 
                 // Include payer in participants if not already there
